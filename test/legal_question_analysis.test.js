@@ -152,6 +152,9 @@ test('citation tags are normalised, and an answer\'s citations and quotations ar
   assert.equal(check.quotes[2].source, 'Article 21', 'case differences do not matter');
   assert.equal(check.ok, false);
   assert.equal(check.verifiedCitations, 3);
+  const withQuestion = Object.defineProperty([...evidence], 'analysis', { value: { question: 'an offence in territorial waters of 48 nautical miles of India' }, enumerable: false });
+  assert.equal(checkLegalAnswer('The question says “territorial waters of 48 nautical miles of India” [Article 21].', withQuestion).quotes.length, 0,
+    'a quotation of the question is not checked against the law');
   const invented = checkLegalAnswer('Exceeding the right is not murder [BNS s.37(5)], and "no right" [BNS s.37(2)].', evidence);
   assert.deepEqual(invented.citations.map((citation) => [citation.tag, citation.ok]), [['BNS s.37(5)', false], ['BNS s.37', true]],
     'a sub-section the official text does not have is flagged; one it has is fine');
@@ -309,4 +312,36 @@ test('the critique sends claims in batches, so a long answer is checked in full'
   assert.deepEqual(batches, [[1, 2, 3, 4, 5, 6], [7, 8]]);
   assert.equal(result.claims.every((claim) => claim.verdict === 'supported'), true);
   assert.equal(result.unchecked, 0);
+});
+
+test('a situation question is solved issue by issue, with every concept it raises represented', async () => {
+  const question = 'a offence had committed in territorial of 48 nautical miles of India towards the Indian ocean 7 person had involved in this offense of robbery and murder in which 5 of them committed the crime on the water bodies and 2 of them linked with this crime from the land territorial of india but the two person was not present tell me whether all the 7 person will be liable';
+  assert.equal(classifyQuestion(question), 'scenario');
+  assert.equal(classifyQuestion('While protecting myself, can I kill someone?'), 'permission', 'a short "can I" is not a fact pattern');
+  const analysis = analyseQuestion(question);
+  assert.deepEqual(analysis.concepts.map((concept) => concept.id).sort(),
+    ['abetment-conspiracy', 'causing-death', 'joint-liability', 'robbery-dacoity', 'territorial-reach']);
+  const direction = answerDirection('scenario');
+  assert.match(direction, /Issues:[\s\S]*Facts that would change the answer:[\s\S]*What LawBuddy could not verify/);
+  assert.match(direction, /point of law built into the question[\s\S]*as a claim to verify, not a fact/);
+  assert.match(direction, /being present/);
+});
+
+test('a situation\'s evidence includes each concept\'s lead provision: criminal conspiracy for those not present', () => {
+  const store = openLegalStore(':memory:');
+  try {
+    const actId = store.upsertAct(actRecord(CENTRAL_ACTS.BNS));
+    const sections = [['s.1', 'Short title, commencement and application'], ['s.3', 'General explanations'], ['s.47', 'Abetment in India of offences outside India'],
+      ['s.61', 'Criminal conspiracy'], ['s.45', 'Abetment of a thing'], ['s.100', 'Culpable homicide'], ['s.101', 'Murder'], ['s.309', 'Robbery'], ['s.310', 'Dacoity']];
+    for (const [label, heading] of sections) {
+      const provisionId = store.upsertProvision({ actId, label, heading });
+      store.addProvisionVersion({ provisionId, text: `${heading} text.`, validFrom: '2024-07-01', sourceUrl: CENTRAL_ACTS.BNS.officialUrl, sourceSha256: 'bns' });
+    }
+    const analysis = analyseQuestion('7 persons were involved in robbery and murder at sea, 5 of them on a boat and 2 of them linked from the land but not present; tell me whether all 7 are liable');
+    assert.equal(analysis.kind, 'scenario');
+    const labels = conceptEvidence({ store, analysis, asOf: '2026-10-14' }).evidence.map((item) => item.label);
+    for (const label of ['s.1', 's.3', 's.61', 's.100', 's.309']) assert.ok(labels.includes(label), label);
+  } finally {
+    store.close();
+  }
 });

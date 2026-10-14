@@ -46,8 +46,11 @@ export const listScYears = async ({ fetcher, readFile = fs.readFile }) => {
  */
 export const syncScYear = async ({ store, fetcher, year, knownArticles, force = false, readFile = fs.readFile }) => {
   const url = scMetadataTarUrl(year);
-  const archive = await fetcher.fetchDocument(url);
-  if (!archive.ok) return { year, ok: false, error: archive.error || `HTTP ${archive.status}` };
+  const fetched = await fetcher.fetchDocument(url);
+  // A dropped connection must not stop a re-parse: the archive fetched earlier is in the vault.
+  const stored = fetched.ok ? null : store.latestDocument(url);
+  const archive = fetched.ok ? fetched : stored && { ok: true, sha256: stored.sha256, rawPath: stored.raw_path, fromVault: true };
+  if (!archive) return { year, ok: false, error: fetched.error || `HTTP ${fetched.status}` };
 
   const previous = store.getScImport(year);
   if (!force && previous?.archive_sha256 === archive.sha256) {
@@ -70,7 +73,8 @@ export const syncScYear = async ({ store, fetcher, year, knownArticles, force = 
       continue;
     }
 
-    const provisions = parsed.articles.filter((article) => knownArticles.has(article.label));
+    // Articles that exist in the official text, and the sections of the criminal codes the catchwords cite.
+    const provisions = [...parsed.articles.filter((article) => knownArticles.has(article.label)), ...(parsed.codeSections || [])];
     const caseId = store.upsertScCase({
       key: parsed.key,
       sourceUrl: scMetadataJsonUrl(year, parsed.key),

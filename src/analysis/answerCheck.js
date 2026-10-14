@@ -103,8 +103,11 @@ export const checkLegalAnswer = (answer, evidence) => {
 
   const texts = statutes.map((item) => ({ item, words: words(item.content) }));
   const quotes = [];
+  // A quotation of the question ("territorial of 48 nautical miles of India") restates the facts, not the law.
+  const asked = ` ${words(evidence?.analysis?.question).join(' ')} `;
   for (const match of String(answer || '').matchAll(/[“"]([^”"\n]{12,1200})[”"]/g)) {
     if (words(match[1]).length < MIN_QUOTE_WORDS) continue;
+    if (asked.length > 2 && asked.includes(` ${words(match[1]).join(' ')} `)) continue;
     // "(a) against an act … (c) in cases in which…": each fragment must be in the same provision, in order.
     const fragments = match[1].split(/\s*(?:…|\.{3})\s*/).map(words).filter((fragment) => fragment.length);
     const located = (hay) => {

@@ -107,10 +107,66 @@ const toCard = (store, { row, points, breakdown, via = null }) => {
 
 const byDateDescending = (a, b) => String(b.row.decided_on || '').localeCompare(String(a.row.decided_on || ''));
 
+// "BNS s.310", "BNS 310", "IPC s.302", "BNSS section 482": a section of a code rather than an Article.
+const SECTION_REF = /^\s*(BNSS|BNS|BSA|IPC|CrPC|IEA)\s*(?:s\.?|sec\.?|section)?\s*(\d{1,3}[A-Z]{0,2})\s*$/i;
+const ACT_CASE = Object.freeze({ bnss: 'BNSS', bns: 'BNS', bsa: 'BSA', ipc: 'IPC', crpc: 'CrPC', iea: 'IEA' });
+const CODE_NAMES = Object.freeze({
+  BNS: 'Bharatiya Nyaya Sanhita, 2023', BNSS: 'Bharatiya Nagarik Suraksha Sanhita, 2023', BSA: 'Bharatiya Sakshya Adhiniyam, 2023',
+  IPC: 'Indian Penal Code, 1860', CrPC: 'Code of Criminal Procedure, 1973', IEA: 'Indian Evidence Act, 1872',
+});
+
+/**
+ * Supreme Court judgments on a section of a criminal code. The new codes are recent, so most of what the
+ * Court has said about a BNS section it said about the IPC section the BNS carries forward: those judgments
+ * are found through the correspondence (LawBuddy's alignment of the two official texts, which says whether
+ * the wording was carried forward unchanged or reworded), and each card names the section the Court applied.
+ */
+const casesForSection = (store, { act, label, limit }) => {
+  const display = `${act} ${label}`;
+  const { cases, earliest, latest } = store.caseStats();
+  const base = { ok: true, provision: display, act, label, heading: null, library: { cases, earliest, latest } };
+
+  const best = new Map();
+  const consider = (rows, cited, note, predecessor = null) => {
+    for (const ranked of rankCases(rows, cited)) {
+      const known = best.get(ranked.row.id);
+      if (!known || known.points < ranked.points) best.set(ranked.row.id, { ...ranked, via: predecessor ? cited : null, viaNote: note });
+    }
+  };
+  consider(store.casesForProvision({ act, label }), display, null);
+
+  // The old section(s) this one carries forward (rows for its sub-sections included: "s.310" → s.310(3) ← s.396).
+  const rows = ['BNS', 'BNSS', 'BSA'].includes(act) ? store.findCorrespondence({ act, label }).filter((row) => row.new_act === act && row.old_label) : [];
+  const predecessors = [];
+  for (const row of rows) {
+    const old = `${row.old_act} ${row.old_label}`;
+    if (predecessors.some((item) => item.old === old)) continue;
+    predecessors.push({ old, carriedAs: `${act} ${row.new_label}`, changed: Boolean(row.changed) });
+    consider(
+      store.casesForProvision({ act: row.old_act, label: row.old_label }),
+      old,
+      `Decided under ${old} (${CODE_NAMES[row.old_act]}), which ${act} ${row.new_label} carries forward${row.changed ? ' with changes to its wording' : ' unchanged'} (LawBuddy's alignment of the two official texts, not the official correspondence table).`,
+      true,
+    );
+  }
+  const ranked = [...best.values()].sort((a, b) => b.points - a.points
+    || String(a.row.decided_on || '9999').localeCompare(String(b.row.decided_on || '9999')) || a.row.id - b.row.id);
+  return {
+    ...base,
+    relation: ranked.some((item) => !item.via) ? 'direct' : ranked.length ? 'predecessor' : 'none',
+    total: ranked.length,
+    predecessors,
+    cases: ranked.slice(0, limit).map((item) => ({ ...toCard(store, item), viaNote: item.viaNote })),
+    latest: [...ranked].sort(byDateDescending).slice(0, LATEST).map((item) => ({ ...toCard(store, item), viaNote: item.viaNote })),
+  };
+};
+
 export const casesForProvision = (store, { provision, limit = 6 }) => {
+  const section = SECTION_REF.exec(String(provision || ''));
+  if (section) return casesForSection(store, { act: ACT_CASE[section[1].toLowerCase()], label: `s.${section[2].toUpperCase()}`, limit });
   const label = toConstitutionLabel(provision);
   if (!label?.startsWith('Art.')) {
-    return { ok: false, status: 400, error: 'Name an Article of the Constitution, e.g. "21" or "Art.21".' };
+    return { ok: false, status: 400, error: 'Name an Article of the Constitution ("21", "Art.21") or a section ("BNS s.310", "IPC 302").' };
   }
   const actId = store.findAct(CONSTITUTION_ACT);
   if (!actId) return { ok: false, status: 503, error: 'The Constitution is not in the library yet.' };

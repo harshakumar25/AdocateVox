@@ -4,20 +4,41 @@ import { fileURLToPath } from 'node:url';
 
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// Check potential locations for .env: current working directory, package root, or monorepo root.
-const candidateEnvs = [
-  path.join(process.cwd(), '.env'),
-  path.join(PKG_ROOT, '.env'),
-  path.resolve(PKG_ROOT, '../../.env'),
-];
-for (const envPath of candidateEnvs) {
-  try {
-    if (fs.existsSync(envPath)) {
-      process.loadEnvFile(envPath);
-      break;
+/**
+ * The project that installed LawBuddy as a dependency (".../node_modules/@docvex/lawbuddy" → "..."), or null
+ * when LawBuddy runs from its own checkout.
+ */
+export const hostRootOf = (pkgRoot) => {
+  const parts = pkgRoot.split(path.sep);
+  const at = parts.lastIndexOf('node_modules');
+  return at > 0 ? parts.slice(0, at).join(path.sep) || path.sep : null;
+};
+
+/**
+ * Every .env that can configure LawBuddy, most specific first: the working directory, the host project
+ * (when installed as a dependency, its own .env holds GROQ_API_KEY and the library location), LawBuddy's
+ * own checkout, and finally the .env beside the library data (LEGAL_ROOT). All are read and the first
+ * value set wins (process.loadEnvFile never overwrites a variable already set), so a key missing from
+ * one file is still found in the next instead of the first file found silently being the only one.
+ */
+export const loadLegalEnv = ({ cwd = process.cwd(), pkgRoot = PKG_ROOT, load = process.loadEnvFile, exists = fs.existsSync } = {}) => {
+  const loaded = [];
+  const tryLoad = (file) => {
+    if (!file || loaded.includes(file) || !exists(file)) return;
+    try {
+      load(file);
+      loaded.push(file);
+    } catch {
+      // an unreadable .env is skipped; the environment as it stands still applies
     }
-  } catch {}
-}
+  };
+  const host = hostRootOf(pkgRoot);
+  for (const dir of [cwd, host, pkgRoot]) if (dir) tryLoad(path.join(dir, '.env'));
+  if (process.env.LEGAL_ROOT) tryLoad(path.join(path.resolve(process.env.LEGAL_ROOT), '.env'));
+  return loaded;
+};
+
+loadLegalEnv();
 
 const parsePositiveInteger = (val, fallback) => {
   if (val === undefined || val === null || val === '') return fallback;
@@ -25,14 +46,13 @@ const parsePositiveInteger = (val, fallback) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-// Base directory for relative legal store and raw vault paths:
-// Prefer LEGAL_ROOT env, or whichever directory holds an existing .lawbuddy/ directory,
-// falling back to process.cwd().
-const resolveBaseDir = () => {
-  if (process.env.LEGAL_ROOT) return path.resolve(process.env.LEGAL_ROOT);
-  if (fs.existsSync(path.join(process.cwd(), '.lawbuddy'))) return process.cwd();
-  if (fs.existsSync(path.join(PKG_ROOT, '.lawbuddy'))) return PKG_ROOT;
-  return process.cwd();
+// Base directory for relative legal store and raw vault paths: LEGAL_ROOT, else the first of the working
+// directory, the host project and LawBuddy's own checkout that holds a .lawbuddy/ library, else the cwd.
+export const resolveBaseDir = ({ cwd = process.cwd(), pkgRoot = PKG_ROOT, legalRoot = process.env.LEGAL_ROOT, exists = fs.existsSync } = {}) => {
+  if (legalRoot) return path.resolve(legalRoot);
+  const host = hostRootOf(pkgRoot);
+  for (const dir of [cwd, host, pkgRoot]) if (dir && exists(path.join(dir, '.lawbuddy'))) return dir;
+  return cwd;
 };
 
 const baseDir = resolveBaseDir();

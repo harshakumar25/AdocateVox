@@ -24,6 +24,7 @@ const cases = createCasesView({
   pointsBody: document.getElementById('points-body'),
   pointsEmpty: document.getElementById('points-empty'),
   pointsTitle: document.getElementById('points-title'),
+  pointsChoices: document.getElementById('points-choices'),
   casesSection: document.getElementById('cases'),
   casesList: document.getElementById('case-list'),
   casesTitle: document.getElementById('cases-title'),
@@ -182,6 +183,8 @@ const ROLE_CHIPS = Object.freeze({
   duty: ['Duty of the authorities', 'info'],
   procedure: ['Procedure', 'info'],
   consequence: ['If the line is crossed', 'danger'],
+  scope: ['Where the law applies', 'info'],
+  liability: ['Who is liable', 'warn'],
 });
 
 /** "s.38" of the BNS → "Section 38"; Articles and Schedules as before. */
@@ -311,6 +314,7 @@ const renderEvidence = (sources, id) => {
 };
 
 const KIND_TEXT = Object.freeze({
+  scenario: 'a situation to solve, so the answer spots each legal issue in your facts and applies the law to it, issue by issue, and says what it could not verify',
   permission: 'a “can I…?” question, so the answer weighs what the law allows against what it forbids and shows where the line is',
   rights: 'a question about rights, so the answer sets out the rights, the duties of the authorities and their limits',
   procedure: 'a question about procedure, so the answer gives the steps the law sets out',
@@ -366,6 +370,14 @@ const VERDICT_TEXT = Object.freeze({
 
 /** The independent critique: each claim that cites a provision, read beside that provision's text. */
 const showCritique = (critique) => {
+  if (critique?.unavailable) {
+    critiquePanel.replaceChildren(
+      el('h3', { text: 'Critique not available this time' }),
+      el('p', { className: 'critique-summary', text: `The second model could not read the claims against the law (${critique.unavailable}). Read each cited provision below before relying on the answer, or ask again in a minute.` }),
+    );
+    critiquePanel.hidden = false;
+    return;
+  }
   if (!critique?.claims?.length) {
     critiquePanel.hidden = true;
     return;
@@ -476,9 +488,22 @@ const teach = async (text) => {
         showReading(data.analysis);
         renderEvidence(data.sources || [], id);
         // The judgments shown are for the first Article the answer is grounded in.
-        const lead = (data.sources || []).find((source) => source.kind === 'statute' && source.label?.startsWith('Art.'));
-        if (lead) cases.load(lead.label);
-        else cases.reset('Supreme Court judgments appear here when the answer is grounded in an Article of the Constitution.');
+        // Judgments for each provision the answer relies on: Articles directly; sections of the new codes
+        // also through the IPC/CrPC/Evidence Act section they replaced. The most decisive role comes first.
+        // A situation question turns on who is liable and where the law reaches; others on what it forbids.
+        const ROLE_FIRST = data.analysis?.kind === 'scenario'
+          ? ['liability', 'scope', 'forbids', 'limits', 'right', 'allows', 'procedure', 'duty', 'consequence']
+          : ['forbids', 'liability', 'limits', 'right', 'allows', 'scope', 'procedure', 'duty', 'consequence'];
+        const statutes = (data.sources || []).filter((source) => source.kind === 'statute' && source.label)
+          .sort((a, b) => (ROLE_FIRST.indexOf(a.role) + 1 || 99) - (ROLE_FIRST.indexOf(b.role) + 1 || 99));
+        const choices = [...new Set(statutes.map((source) => (source.act && source.act !== 'COI' ? `${source.act} ${source.label}` : source.label)))];
+        if (choices.length) {
+          cases.offer(choices, choices[0]);
+          cases.load(choices[0]);
+        } else {
+          cases.offer([], null);
+          cases.reset('Supreme Court judgments appear here for the provisions an answer relies on.');
+        }
         setStatus('Teaching…');
       } else if (event === 'token') {
         answer.append(document.createTextNode(data.token));

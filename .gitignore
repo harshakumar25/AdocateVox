@@ -1,5 +1,7 @@
 node_modules/
 .env
+.lawbuddy
 .lawbuddy/
 workers/.venv/
 workers/__pycache__/
+.dev/

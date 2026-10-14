@@ -25,7 +25,7 @@ const benchText = (bench) => (bench ? `, ${bench}-judge bench` : '');
 const reviewLabel = ({ count, average }) =>
   (count ? `${Number(average).toFixed(1)}★ (${count})` : 'none yet');
 
-export const createCasesView = ({ pointsTable, pointsBody, pointsEmpty, pointsTitle, casesSection, casesList, casesTitle, casesNote }) => {
+export const createCasesView = ({ pointsTable, pointsBody, pointsEmpty, pointsTitle, pointsChoices, casesSection, casesList, casesTitle, casesNote }) => {
   let current = 0;
 
   const reset = (message) => {
@@ -153,7 +153,8 @@ export const createCasesView = ({ pointsTable, pointsBody, pointsEmpty, pointsTi
         el('h3', { text: titleCase(card.title) }),
         el('span', { className: 'points-badge', text: `${card.points} pts` }),
       ]),
-      card.via ? el('p', { className: 'case-via', text: `Interprets ${humanLabel(card.via)}, closely related to ${humanLabel(label)}` }) : null,
+      card.viaNote ? el('p', { className: 'case-via', text: card.viaNote })
+        : card.via ? el('p', { className: 'case-via', text: `Interprets ${humanLabel(card.via)}, closely related to ${humanLabel(label)}` }) : null,
       statusView(card),
       el('ul', { className: 'facts' }, facts),
       // The record's "author" mark is not reliably the leading opinion (Maneka Gandhi: Untwalia J, not Bhagwati J),
@@ -222,9 +223,13 @@ export const createCasesView = ({ pointsTable, pointsBody, pointsEmpty, pointsTi
     casesTitle.textContent = {
       direct: `Supreme Court judgments on ${human}`,
       text: `Supreme Court judgments discussing ${human}`,
+      predecessor: `How the Supreme Court has read ${human}, through the section it replaced`,
     }[body.relation] || `Judgments on provisions closely related to ${human}`;
+    const carried = (body.predecessors || []).map((item) => `${item.old} → ${item.carriedAs}${item.changed ? ' (reworded)' : ''}`).join('; ');
     const relationNote = {
-      direct: `${plural(body.total, 'indexed judgment')} name ${human} in the official headnote; showing the top ${body.cases.length} by points.`,
+      direct: `${plural(body.total, 'indexed judgment')} name ${human} in the official headnote${carried ? ` or the section it replaced (${carried})` : ''}; showing the top ${body.cases.length} by points.`,
+      predecessor: `${human} is new law (in force from 1 July 2024), so the Supreme Court's reading of it is in judgments on the section it carries forward: ${carried}. ${plural(body.total, 'indexed judgment')} name that section in the official headnote; showing the top ${body.cases.length} by points. Where the wording changed, check the new text before relying on an old judgment.`,
+      none: `No indexed judgment's headnote names ${human}${carried ? ` or the section it replaced (${carried})` : ''} yet.`,
       text: `No official headnote names ${human}, but ${plural(body.total, 'judgment')} in the full-text index discuss${body.total === 1 ? 'es' : ''} it in the text; showing the top ${body.cases.length} by points.`,
     }[body.relation] || `No indexed judgment's headnote names ${human} itself. These interpret ${body.relatedLabels.slice(0, 6).map(humanLabel).join(', ')}, which ${human} cross-references or sits beside.`;
     const index = body.library.textIndex;
@@ -247,5 +252,18 @@ export const createCasesView = ({ pointsTable, pointsBody, pointsEmpty, pointsTi
     cards[0].prepare?.();
   };
 
-  return { load, reset };
+  /** Buttons to switch the judgments shown between the provisions an answer relies on. */
+  const offer = (labels, active) => {
+    pointsChoices.replaceChildren(...labels.map((label) => {
+      const button = el('button', { className: `chip${label === active ? ' active' : ''}`, text: humanLabel(label), attrs: { type: 'button', 'aria-pressed': String(label === active) } });
+      button.addEventListener('click', () => {
+        offer(labels, label);
+        load(label);
+      });
+      return button;
+    }));
+    pointsChoices.hidden = labels.length < 2;
+  };
+
+  return { load, reset, offer };
 };

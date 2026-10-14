@@ -1269,3 +1269,14 @@ a.card:hover {
   white-space: nowrap;
   border: 0;
 }
+
+/* Switch the precedent table between the provisions an answer relies on */
+.points-choices {
+  margin: 0 0 10px;
+}
+
+.points-choices .chip.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}

@@ -18,7 +18,15 @@
  */
 
 /** Question kinds and the answer format each one gets. */
-export const QUESTION_KINDS = Object.freeze(['formal', 'permission', 'rights', 'procedure', 'punishment', 'definition', 'general']);
+export const QUESTION_KINDS = Object.freeze(['formal', 'scenario', 'permission', 'rights', 'procedure', 'punishment', 'definition', 'general']);
+
+// A situation question gives facts (who did what, where) and asks how the law applies to them: "7 persons
+// were involved… 2 were not present… tell me whether all 7 will be liable". It needs issue-spotting, not a
+// recital of provisions. Facts are recognised by people counted or described, past events, and a question
+// about liability or applicability.
+const SITUATION_FACTS = /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|some|all|both)\s+(?:of\s+(?:them|those)\s+)?(?:persons?|people|men|women|accused|of them|friends|members)\b|\b(?:had|has|was|were)\s+(?:committed|involved|present|not present|linked|killed|robbed|attacked|planned)\b|\b(?:a|an)\s+(?:person|man|woman|offence|crime)\s+(?:had|has|was|is)\b/i;
+const SITUATION_ASK = /\b(?:whether|liable|guilty|applicable|which law applies|what offence)\b/i;
+export const isSituation = (text) => SITUATION_FACTS.test(text) && SITUATION_ASK.test(text) && String(text).length > 80;
 
 const KIND_PATTERNS = [
   // A request for an official document or a formal legal write-up.
@@ -33,6 +41,8 @@ const KIND_PATTERNS = [
 
 export const classifyQuestion = (text) => {
   const value = String(text || '').trim();
+  if (KIND_PATTERNS[0][1].test(value)) return 'formal';
+  if (isSituation(value)) return 'scenario';
   for (const [kind, pattern] of KIND_PATTERNS) if (pattern.test(value)) return kind;
   return 'general';
 };
@@ -190,6 +200,50 @@ export const LEGAL_CONCEPTS = Object.freeze([
     ],
   },
   {
+    id: 'territorial-reach',
+    name: 'Where Indian criminal law applies (within and beyond India, ships, the sea)',
+    focus: /within India|beyond India|ship|aircraft|outside India|voyage|journey/i,
+    triggers: [/\bnautical miles?\b/i, /\b(?:territorial|maritime) (?:waters?|zone|limit)\b/i, /\b(?:high )?seas?\b|\bocean\b|\bwater bod(?:y|ies)\b/i, /\b(?:ship|vessel|boat|aircraft)\b/i, /\b(?:outside|beyond) (?:india|the territory)\b|\babroad\b|\bforeign country\b/i, /\bjurisdiction\b/i],
+    provisions: [
+      { act: BNS, label: 's.1', role: 'scope', expect: /application/i },
+      { act: BNSS, label: 's.208', role: 'procedure', expect: /^Offence committed outside India/i },
+      { act: BNSS, label: 's.203', role: 'procedure', expect: /journey or voyage/i },
+    ],
+  },
+  {
+    id: 'joint-liability',
+    name: 'Liability of several persons for one offence (common intention, dacoity)',
+    focus: /common intention|several persons|five or more|conjointly|every one of those persons|each of such persons/i,
+    triggers: [/\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten|several|many|all)\s+(?:of\s+(?:them|those)\s+|persons?|people|men|accused|members)\b/i, /\b(?:gang|group|together|jointly|accomplices?|co-?accused)\b/i, /\ball\b.*\bliable\b/i],
+    provisions: [
+      { act: BNS, label: 's.3', role: 'liability', expect: /^General explanations/i },
+      { act: BNS, label: 's.310', role: 'liability', expect: /^Dacoity/i },
+    ],
+  },
+  {
+    id: 'abetment-conspiracy',
+    name: 'Abetment and criminal conspiracy (those who plan or help but are not present)',
+    focus: /abet|conspira|agree|instigat|aid|present/i,
+    triggers: [/\bnot present\b|\babsent\b|\bfrom (?:the )?land\b|\blinked\b|\bplann(?:ed|ing)\b|\bhelp(?:ed|ing)?\b/i, /\babet\w*\b|\bconspir\w*\b|\binstigat\w*\b|\bmastermind\b/i],
+    provisions: [
+      { act: BNS, label: 's.61', role: 'liability', expect: /^Criminal conspiracy/i },
+      { act: BNS, label: 's.45', role: 'liability', expect: /^Abetment of a thing/i },
+      { act: BNS, label: 's.47', role: 'scope', expect: /Abetment in India of offences outside India/i },
+      { act: BNS, label: 's.49', role: 'consequence', expect: /Punishment of abetment if act abetted is committed/i },
+      { act: BNS, label: 's.54', role: 'liability', expect: /Abettor present/i },
+    ],
+  },
+  {
+    id: 'robbery-dacoity',
+    name: 'Robbery and dacoity',
+    focus: /robbery|dacoity|five or more/i,
+    triggers: [/\brobb(?:ery|ed|ing|ers?)\b|\bdacoit\w*\b|\bloot\w*\b|\bpiracy\b|\bpirates?\b/i],
+    provisions: [
+      { act: BNS, label: 's.309', role: 'forbids', expect: /^Robbery$/i },
+      { act: BNS, label: 's.310', role: 'forbids', expect: /^Dacoity$/i },
+    ],
+  },
+  {
     id: 'life-and-liberty',
     focus: /life|liberty/i,
     name: 'Right to life and personal liberty',
@@ -200,7 +254,7 @@ export const LEGAL_CONCEPTS = Object.freeze([
   },
 ]);
 
-const ROLE_ORDER = ['allows', 'right', 'forbids', 'limits', 'duty', 'procedure', 'consequence'];
+const ROLE_ORDER = ['scope', 'allows', 'right', 'forbids', 'liability', 'limits', 'duty', 'procedure', 'consequence'];
 
 /**
  * @returns {{ kind: string, concepts: {id: string, name: string}[], provisions: {act: string, label: string,
@@ -216,7 +270,8 @@ export const analyseQuestion = (text) => {
       const key = `${provision.act}|${provision.label}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      provisions.push({ ...provision, concept: concept.id });
+      // rank: the provision's place in its concept's own list; its first one leads (s.61 for abetment-conspiracy).
+      provisions.push({ ...provision, concept: concept.id, rank: concept.provisions.indexOf(provision) });
     }
   }
   provisions.sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
@@ -238,6 +293,8 @@ const ROLE_WORDS = Object.freeze({
   duty: 'puts a duty on the authorities',
   procedure: 'sets out the procedure',
   consequence: 'states the punishment or consequence if the line is crossed',
+  scope: 'decides where and to whom the law applies',
+  liability: 'decides who is liable when several people take part',
 });
 
 /** One line for the evidence block: why LawBuddy put this provision in front of the model. */
@@ -253,7 +310,23 @@ const READ_EXACTLY = 'Read the law exactly: a condition applies only to the pers
  * The answer format for each kind of question. Plain-text headings, one per line, because the answer is
  * also spoken aloud.
  */
+const GAPS = 'Under a final heading "What LawBuddy could not verify", name every point the answer depends on that the evidence does not settle (a law that is not in the evidence, such as the Act that fixes the limits of India\'s maritime zones; a fact the question leaves open). Never fill such a gap from memory.';
+
 export const ANSWER_DIRECTIONS = Object.freeze({
+  scenario: [
+    'This is a situation question. Do not recite the provisions; apply them to these facts, issue by issue, as a law teacher solving a problem, using only the official text in the evidence.',
+    'Answer under these headings, each on its own line:',
+    'Short answer: one or two sentences answering exactly what was asked, with the conditions it depends on.',
+    'The facts that matter: the facts given, restated in a few words, and any assumption you must make.',
+    'Issues: number each legal question the facts raise (for example, where the law applies; who is liable; for which offence).',
+    'Then, for each issue in turn: the law (cited and quoted), its application to these facts, and the likely conclusion with what it depends on.',
+    'Facts that would change the answer:',
+    'Treat any point of law built into the question (that a place is within India\'s territory or "territorial" waters, that a ship is Indian, that a person is a citizen) as a claim to verify, not a fact: if the evidence does not settle it, say so in the issue it affects and give the answer on each possibility (for example, if the place is within India / if it is beyond India).',
+    'Where a provision\'s words require something the facts exclude (being present, being on a ship registered in India, being a citizen), say plainly that it does not reach that person on these facts.',
+    GAPS,
+    READ_EXACTLY,
+    CITE,
+  ].join('\n'),
   permission: [
     'Critically analyse this question as an Indian law tutor, using only the official text in the evidence. Weigh the provisions that permit the act against those that forbid it, and show exactly where the law draws the line between them.',
     'Answer under these headings, each on its own line:',

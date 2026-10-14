@@ -623,7 +623,8 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     ).id);
     statements.deleteCaseProvisions.run(id, 'headnote');
     // position = the headnote catchword group the provision first appears in (0 = the lead group).
-    for (const { label, group } of provisions) statements.insertCaseProvision.run(id, act, label, 'headnote', group);
+    // A provision may name its own Act (catchwords cite "Penal Code, 1860 - s.302" as well as Articles).
+    for (const { label, group, act: own } of provisions) statements.insertCaseProvision.run(id, own || act, label, 'headnote', group);
     statements.deleteCaseFts.run(id);
     statements.insertCaseFts.run(id, title, headnote || '');
     return id;

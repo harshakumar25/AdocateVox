@@ -48,9 +48,11 @@ export const extractClaims = (answer) => {
 };
 
 /** The official text alone, without the evidence block's framing lines. */
+// Keeps the in-force line ("Official text (Gazette …), in force since 2024-07-01:") so a claim about when a
+// provision took effect can be checked rather than flagged.
 const officialText = (content) => {
   const at = content.search(/Official text[^\n]*:\n/);
-  return at === -1 ? content : content.slice(content.indexOf('\n', at) + 1);
+  return at === -1 ? content : content.slice(at);
 };
 
 /**

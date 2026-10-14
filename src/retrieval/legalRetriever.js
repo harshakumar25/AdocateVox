@@ -309,16 +309,30 @@ const PER_ROLE_FIRST = 2;
 // full set, so a question fits a tokens-per-minute quota with room for the answer.
 const ROLE_BUDGET = Object.freeze({
   allows: 1000, right: 1300, forbids: 1300, limits: 1600, duty: 1000, procedure: 1600, consequence: 800,
+  scope: 1300, liability: 1000,
 });
+// A situation raises several issues, so it gets more provisions, each kept shorter (same total budget).
+const SCENARIO_PROVISIONS = 11;
+const SCENARIO_BUDGET_SHARE = 0.7;
 
-/** Up to PER_ROLE_FIRST provisions of each role first, so every side of the question is represented. */
+/**
+ * Every concept's lead provision first (a situation raising five issues needs all five), then up to
+ * PER_ROLE_FIRST provisions of each role, so every side of the question is represented, then the rest.
+ */
 const balanceRoles = (provisions, limit) => {
   const chosen = [];
+  for (const concept of [...new Set(provisions.map((provision) => provision.concept))]) {
+    const own = provisions.filter((provision) => provision.concept === concept);
+    chosen.push(own.reduce((lead, provision) => ((provision.rank ?? 0) < (lead.rank ?? 0) ? provision : lead)));
+  }
   for (const role of [...new Set(provisions.map((provision) => provision.role))]) {
-    chosen.push(...provisions.filter((provision) => provision.role === role).slice(0, PER_ROLE_FIRST));
+    for (const provision of provisions.filter((item) => item.role === role).slice(0, PER_ROLE_FIRST)) {
+      if (!chosen.includes(provision)) chosen.push(provision);
+    }
   }
   for (const provision of provisions) if (!chosen.includes(provision)) chosen.push(provision);
-  return chosen.slice(0, limit);
+  // Presented in role order (what permits it, then what forbids it…), whatever order they were chosen in.
+  return chosen.slice(0, limit).sort((a, b) => provisions.indexOf(a) - provisions.indexOf(b));
 };
 
 /**
@@ -330,7 +344,8 @@ export const conceptEvidence = ({ store, analysis, asOf }) => {
   const evidence = [];
   const warnings = [];
   const names = new Map(analysis.concepts.map((concept) => [concept.id, concept.name]));
-  for (const provision of balanceRoles(analysis.provisions, MAX_CONCEPT_PROVISIONS)) {
+  const scenario = analysis.kind === 'scenario';
+  for (const provision of balanceRoles(analysis.provisions, scenario ? SCENARIO_PROVISIONS : MAX_CONCEPT_PROVISIONS)) {
     const actId = actIdFor(store, provision.act);
     const version = actId ? store.getProvisionAsOf({ actId, label: provision.label, date: asOf }) : null;
     if (!version) {
@@ -342,7 +357,8 @@ export const conceptEvidence = ({ store, analysis, asOf }) => {
       continue;
     }
     const note = roleNote({ ...provision, conceptName: names.get(provision.concept) });
-    const shaping = { note, budget: ROLE_BUDGET[provision.role] ?? MAX_EVIDENCE_CHARS, focus: analysis.focus };
+    const budget = Math.round((ROLE_BUDGET[provision.role] ?? MAX_EVIDENCE_CHARS) * (scenario ? SCENARIO_BUDGET_SHARE : 1));
+    const shaping = { note, budget, focus: analysis.focus };
     evidence.push(provision.act === 'COI'
       ? { ...statuteEvidence(provision.label, version, shaping), via: 'concept', role: provision.role }
       : { ...sectionEvidence(provision.act, version, shaping), via: 'concept', role: provision.role });
@@ -426,6 +442,8 @@ const withAnalysis = (evidence, analysis, warnings = []) => Object.definePropert
     concepts: analysis.concepts,
     direction: evidence.length ? answerDirection(analysis.kind) : null,
     warnings,
+    // The question itself, so the answer check can tell a quotation of the question from one of the law.
+    question: analysis.question ?? null,
   },
   enumerable: false,
 });
@@ -440,7 +458,7 @@ export const createLawRetriever = ({ loader, asOf, searchLimit = 3 }) => async (
   if (!store) return [];
   const date = asOf ?? new Date().toISOString().slice(0, 10);
 
-  const analysis = analyseQuestion(params.text);
+  const analysis = { ...analyseQuestion(params.text), question: String(params.text || '') };
   const references = detectLegalReferences(params.text);
   if (references.constitution.length || references.sections.length) {
     const evidence = retrieveLegalEvidence({ store, references, asOf: date });
