@@ -70,7 +70,7 @@ const handleCopyUpload = async (req, store, parsedUrl, checkUpload) => {
     return await queuePdfWork(() => checkUpload({
       store,
       body,
-      act: parsedUrl.searchParams.get('act') || 'constitution',
+      act: parsedUrl.searchParams.get('act') || 'auto',
       copyDate: parsedUrl.searchParams.get('date') || null,
     }));
   } catch {
@@ -81,13 +81,15 @@ const handleCopyUpload = async (req, store, parsedUrl, checkUpload) => {
 
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LAWBUDDY_WEB_DIR = path.resolve(PKG_ROOT, 'web');
+const LOCAL_VOICE_SELECTOR = path.join(LAWBUDDY_WEB_DIR, 'voiceSelector.js');
 const SHARED_VOICE_SELECTOR = path.resolve(PKG_ROOT, '../docvex/extension/voiceSelector.js');
 const MONO_VOICE_SELECTOR = path.resolve(PKG_ROOT, '../../extension/voiceSelector.js');
 
 const resolveVoiceSelector = () => {
+  if (existsSync(LOCAL_VOICE_SELECTOR)) return LOCAL_VOICE_SELECTOR;
   if (existsSync(SHARED_VOICE_SELECTOR)) return SHARED_VOICE_SELECTOR;
   if (existsSync(MONO_VOICE_SELECTOR)) return MONO_VOICE_SELECTOR;
-  return path.resolve(PKG_ROOT, '../docvex/extension/voiceSelector.js');
+  return LOCAL_VOICE_SELECTOR;
 };
 
 export const LAWBUDDY_SECURITY_HEADERS = Object.freeze({

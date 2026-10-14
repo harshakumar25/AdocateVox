@@ -116,7 +116,7 @@ export const critiqueClaims = async ({
       ...cited.map((tag) => `[${tag}]${inForceLine(byTag.get(tag).content)}\n${officialText(byTag.get(tag).content)}`),
       '',
       'Claims to check (each with the full clause every quotation in it comes from):',
-      ...batch.map((claim) => [`${claim.n}. ${claim.text}`, ...quotedClauses(claim, byTag)].join('\n')),
+      ...batch.map((claim) => [`${claim.n}. ${claim.text}`, ...(claim.note ? [`   note: ${claim.note}`] : []), ...quotedClauses(claim, byTag)].join('\n')),
     ].join('\n\n');
     // Judging a claim is where care matters more than speed: medium reasoning (low passed planted errors).
     const result = await llm({

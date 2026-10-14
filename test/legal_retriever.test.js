@@ -7,11 +7,28 @@ import {
   detectLegalReferences,
   retrieveLegalEvidence,
 } from '../src/retrieval/legalRetriever.js';
-import { buildTeachingPrompt } from '../../docvex/server/prompt/teacherPrompt.js';
-import { streamTeachPipeline } from '../../docvex/server/pipeline.js';
-import { createServer } from '../../docvex/server/server.js';
+import http from 'node:http';
+import { handleLawBuddyStaticRoute, handleLawBuddyApiRoute, LAWBUDDY_FILES } from '../src/routes.js';
+import { config } from '../src/config.js';
 
 const SOURCE = 'https://www.legislative.gov.in/static/uploads/2025/07/coi.pdf';
+
+
+const createTestServer = ({ legalStore = null, LEGAL_DB_PATH = config.LEGAL_DB_PATH } = {}) => {
+  const legalLibrary = createLegalStoreLoader({ store: legalStore, dbPath: LEGAL_DB_PATH });
+  return http.createServer(async (req, res) => {
+    const parsedUrl = new URL(req.url, 'http://127.0.0.1');
+    const pathname = parsedUrl.pathname;
+    const sendJson = (res, status, data) => {
+      res.writeHead(status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(data));
+    };
+    if (handleLawBuddyStaticRoute(req, res, pathname, LAWBUDDY_FILES)) return;
+    if (await handleLawBuddyApiRoute(req, res, { pathname, parsedUrl, legalLibrary, sendJson })) return;
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Not found' }));
+  });
+};
 
 const seedStore = () => {
   const store = openLegalStore(':memory:');
@@ -143,110 +160,9 @@ test('the law retriever grounds named provisions, then searches the official tex
   assert.deepEqual(await missing({ text: 'Article 21' }), [], 'no library installed');
 });
 
-test('legal evidence switches the teaching prompt to a cite-or-silence law tutor', () => {
-  const store = seedStore();
-  try {
-    const evidence = retrieveLegalEvidence({ store, references: detectLegalReferences('Article 21'), asOf: '2026-10-12' });
-    const { userPrompt, groundingStatus, sourceDomains } = buildTeachingPrompt({ selectedText: 'Explain Article 21', evidence });
-    assert.equal(groundingStatus, 'grounded');
-    assert.deepEqual(sourceDomains, ['legislative.gov.in']);
-    assert.match(userPrompt, /<evidence>\nConstitution of India, Article 21/);
-    assert.match(userPrompt, /Teach this like an Indian law tutor, grounded only in the official text/);
-    assert.match(userPrompt, /Do not cite any case, judgment, or section that is not in the evidence\./);
-
-    const plain = buildTeachingPrompt({ selectedText: 'Explain TCP', evidence: [{ domain: 'ietf.org', content: 'TCP' }] });
-    assert.doesNotMatch(plain.userPrompt, /law tutor/);
-
-    const empty = buildTeachingPrompt({ selectedText: 'Is gambling legal in Goa?', evidence: [], mode: 'law' });
-    assert.equal(empty.groundingStatus, 'ungrounded');
-    assert.match(empty.userPrompt, /LawBuddy found nothing for this request in its verified library/);
-    assert.match(empty.userPrompt, /do not answer the legal question from memory/);
-    assert.doesNotMatch(empty.userPrompt, /explain from general knowledge/);
-  } finally {
-    store.close();
-  }
-});
-
-test('streamTeachPipeline sends the official text to the model and reports legislative.gov.in as the source', async () => {
-  const store = seedStore();
-  let groqRequest = null;
-  const fetchFn = async (url, init) => {
-    groqRequest = JSON.parse(init.body);
-    const chunks = ['data: {"choices":[{"delta":{"content":"Article 21 protects life. "}}]}\n\n', 'data: [DONE]\n\n'];
-    return {
-      ok: true,
-      status: 200,
-      body: new ReadableStream({
-        pull(controller) {
-          const next = chunks.shift();
-          if (next) controller.enqueue(new TextEncoder().encode(next));
-          else controller.close();
-        },
-      }),
-    };
-  };
-  try {
-    let metadata = null;
-    await streamTeachPipeline(
-      { text: 'Explain Article 124A', provider: 'groq', requestId: 'req_legal' },
-      {
-        onMetadata: (data) => { metadata = data; },
-        onToken: () => {},
-        onDone: () => {},
-        options: {
-          GROQ_API_KEY: 'test-key',
-          fetchFn,
-          mode: 'law',
-          retrieveVerifiedReferences: createLawRetriever({ loader: createLegalStoreLoader({ store }), asOf: '2026-10-12' }),
-        },
-      },
-    );
-    const prompt = groqRequest.messages.map((m) => m.content).join('\n');
-    assert.match(prompt, /Constitution of India, Article 124A — National Judicial Appointments Commission\./);
-    assert.match(prompt, /CAUTION — the printed text includes an amendment a court invalidated/);
-    assert.match(prompt, /Indian law tutor/);
-    assert.equal(metadata.groundingStatus, 'grounded');
-    assert.deepEqual(metadata.sources.map((s) => s.domain), ['legislative.gov.in']);
-  } finally {
-    store.close();
-  }
-});
-
-test('LawBuddy has its own routes: /lawbuddy/teach is grounded in law mode, /teach stays plain DocVex', async () => {
-  const store = seedStore();
-  const calls = [];
-  const server = createServer({
-    legalStore: store,
-    retrieveVerifiedReferences: async () => [{ domain: 'kubernetes.io', content: 'Pods' }],
-    teachHandler: async (data, options) => {
-      calls.push({ mode: options.mode ?? 'general', evidence: await options.retrieveVerifiedReferences({ text: data.text }) });
-      return { ok: true };
-    },
-  });
-  await new Promise((resolve) => server.listen(0, resolve));
-  const base = `http://127.0.0.1:${server.address().port}`;
-  const post = (path) => fetch(`${base}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: 'Explain Article 21' }),
-  });
-  try {
-    assert.equal((await post('/teach')).status, 200);
-    assert.equal((await post('/lawbuddy/teach')).status, 200);
-    assert.equal(calls[0].mode, 'general');
-    assert.equal(calls[0].evidence[0].domain, 'kubernetes.io', '/teach keeps the regular DocVex retriever');
-    assert.equal(calls[1].mode, 'law');
-    assert.equal(calls[1].evidence[0].kind, 'statute');
-    assert.match(calls[1].evidence[0].content, /No person shall be deprived/);
-  } finally {
-    await new Promise((resolve) => server.close(resolve));
-    store.close();
-  }
-});
-
 test('LawBuddy library API (/lawbuddy/api/*): health, article as of a date, search and section lookup', async () => {
   const store = seedStore();
-  const server = createServer({ legalStore: store });
+  const server = createTestServer({ legalStore: store });
   await new Promise((resolve) => server.listen(0, resolve));
   const get = async (path) => {
     const res = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
@@ -285,7 +201,7 @@ test('LawBuddy library API (/lawbuddy/api/*): health, article as of a date, sear
     store.close();
   }
 
-  const empty = createServer({ LEGAL_DB_PATH: '/nonexistent/lawbuddy.db' });
+  const empty = createTestServer({ LEGAL_DB_PATH: '/nonexistent/lawbuddy.db' });
   await new Promise((resolve) => empty.listen(0, resolve));
   try {
     const res = await fetch(`http://127.0.0.1:${empty.address().port}/lawbuddy/api/health`);
@@ -297,7 +213,7 @@ test('LawBuddy library API (/lawbuddy/api/*): health, article as of a date, sear
 });
 
 test('GET /lawbuddy and GET /lawbuddy/teach serve the website from a fixed whitelist with security headers', async () => {
-  const server = createServer({ LEGAL_DB_PATH: '/nonexistent/lawbuddy.db' });
+  const server = createTestServer({ LEGAL_DB_PATH: '/nonexistent/lawbuddy.db' });
   await new Promise((resolve) => server.listen(0, resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
@@ -329,31 +245,3 @@ test('GET /lawbuddy and GET /lawbuddy/teach serve the website from a fixed white
   }
 });
 
-test('POST /lawbuddy/teach runs the grounded provider instead of hybrid local insights', async () => {
-  const seen = [];
-  const make = (extra) => createServer({
-    LEGAL_DB_PATH: '/nonexistent/lawbuddy.db',
-    DEFAULT_PROVIDER: 'hybrid',
-    teachHandler: async (data) => {
-      seen.push(data.provider);
-      return { ok: true };
-    },
-    ...extra,
-  });
-  for (const [extra, body] of [
-    [{ GROQ_API_KEY: 'key' }, { text: 'Explain Article 21' }],
-    [{ GROQ_API_KEY: '' }, { text: 'Explain Article 21' }],
-    [{ GROQ_API_KEY: 'key' }, { text: 'Explain Article 21', provider: 'ollama' }],
-  ]) {
-    const server = make(extra);
-    await new Promise((resolve) => server.listen(0, resolve));
-    try {
-      await fetch(`http://127.0.0.1:${server.address().port}/lawbuddy/teach`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-      });
-    } finally {
-      await new Promise((resolve) => server.close(resolve));
-    }
-  }
-  assert.deepEqual(seen, ['groq', 'ollama', 'ollama']);
-});

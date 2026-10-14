@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Check my bare act — LawBuddy</title>
-  <meta name="description" content="Upload a bare act PDF and see whether it matches the official text in force today, provision by provision.">
+  <meta name="description" content="Upload a bare act or your notes: LawBuddy checks it against the official text in force and the Supreme Court record.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap">
@@ -30,20 +30,20 @@
 
   <main class="studio">
     <div class="wrap">
-      <p class="eyebrow">Is my bare act current?</p>
-      <h1>Check your PDF against the <em>official text</em> in force today.</h1>
-      <p class="lede">Free bare act PDFs are often years out of date. Upload yours and LawBuddy compares it, provision by provision, with the official Constitution of India published by the Legislative Department, and shows exactly what your copy is missing.</p>
+      <p class="eyebrow">Check my bare act, or my notes</p>
+      <h1>Is what you are reading <em>accurate law</em>?</h1>
+      <p class="lede">Upload a bare act PDF, or your notes, an article, an answer or a commentary. LawBuddy first works out what the document is, then checks it the way that kind of document must be checked: a bare act section by section against the official Gazette text and the judgments that struck parts of it down; notes and articles claim by claim, with every section, quotation and case citation checked against the official text and the Supreme Court's own record.</p>
 
       <form class="upload" id="check-form">
-        <label for="file">Your bare act (PDF, up to 30 MB)
+        <label for="file">Your PDF (up to 30 MB)
           <input id="file" name="file" type="file" accept="application/pdf,.pdf" required>
         </label>
-        <label for="date">Date printed on your copy (optional)
+        <label for="date">Date printed on a bare act (optional)
           <input id="date" name="date" type="date">
         </label>
-        <button class="button" type="submit" id="check">Check my copy</button>
+        <button class="button" type="submit" id="check">Check it</button>
       </form>
-      <p class="section-note">Checks copies of the Constitution of India for now. Your file is read and deleted straight away; LawBuddy keeps only its fingerprint and the report, so the same file is answered instantly next time.</p>
+      <p class="section-note">Checks copies of the Constitution of India, the Bharatiya Nyaya Sanhita, the Bharatiya Nagarik Suraksha Sanhita and the Bharatiya Sakshya Adhiniyam; recognises copies of the repealed IPC, CrPC and Evidence Act; and fact-checks any write-up that cites them. Your file is read and deleted straight away; LawBuddy keeps only its fingerprint.</p>
 
       <div class="grid">
         <section class="panel" aria-labelledby="verdict-title">
@@ -59,10 +59,10 @@
 
         <aside class="panel" aria-labelledby="changes-title">
           <div class="panel-head">
-            <h2 class="panel-title" id="changes-title">What your copy gets wrong</h2>
+            <h2 class="panel-title" id="changes-title">What LawBuddy found</h2>
           </div>
           <div id="changes">
-            <p class="empty">Provisions that read differently from the official text, or took effect after your copy, appear here with the words your copy is missing.</p>
+            <p class="empty">Upload a PDF: what LawBuddy finds, with the official text behind every finding, appears here.</p>
           </div>
         </aside>
       </div>

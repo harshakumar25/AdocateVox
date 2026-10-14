@@ -44,8 +44,8 @@ const SHINGLE = 8;
 // the Act; an essay quoting it is mostly the essay.
 const ACT_COPY_OVERLAP = 0.4;
 const MIN_LOCATED = 3;
-// Below this share of a provision's wording, the copy does not contain the provision (only shared phrasing).
-const PRESENT_COVERAGE = 0.7;
+// Below this share of a provision's five-word runs, the copy does not contain the provision at all.
+const PRESENT_COVERAGE = 0.3;
 const MIN_OLD_HEADINGS = 20;
 const MIN_QUOTE_WORDS = 6;
 const MAX_REFERENCES = 60;
@@ -124,6 +124,7 @@ export const compareByPresence = ({ provisions, copyText }) => {
   for (let i = 0; i + RUN <= copyWords.length; i += 1) copyRuns.add(copyWords.slice(i, i + RUN).join(' '));
   const differs = [];
   let compared = 0;
+  let formatting = 0;
   for (const provision of provisions) {
     const words = comparableWords(provision.text);
     if (words.length < MIN_PROVISION_WORDS) continue;
@@ -150,14 +151,56 @@ export const compareByPresence = ({ provisions, copyText }) => {
         missing.push(phrase.length > MAX_PHRASE_WORDS ? `${phrase.slice(0, MAX_PHRASE_WORDS).join(' ')} …` : phrase.join(' '));
       }
     }
-    if (coverage < IDENTICAL || missing.length) {
+    // A shortfall with no run of four missing official words is how the PDF was read (a hyphenated line
+    // break, a page head inside a sentence), not a difference in the law.
+    if (missing.length) {
       differs.push({ label: provision.label, heading: provision.heading, coverage: Math.round(coverage * 100) / 100, missing: missing.slice(0, MAX_PHRASES) });
+    } else if (coverage < IDENTICAL) {
+      formatting += 1;
     }
   }
-  return { compared, differs };
+  return { compared, differs, formatting };
 };
 
-const checkActCopy = ({ act, pages, copyDate, sha256 }) => {
+/**
+ * What courts and the Gazette say about a provision's printed text: an amendment the Supreme Court struck down
+ * (the 99th Amendment's NJAC words in Articles 124A-128) or one never brought into force. A copy that differs
+ * from the official text only there is not wrong: its older wording is the one that applies. The judgment
+ * named in the footnote is resolved to the Supreme Court index where it can be.
+ */
+const judicialNotes = (store, provision) => {
+  let footnotes = [];
+  try {
+    footnotes = JSON.parse(provision.footnotes || '[]');
+  } catch {
+    footnotes = [];
+  }
+  return footnotes.filter((note) => note.invalidated || note.pending).map((note) => {
+    let judgment = null;
+    // "… Advocates-on-Record Association and another vs. Union of India in its judgment dated 16-10-2015":
+    // the decision date and a party's name identify the judgment in the Court's record.
+    const dated = /([A-Z][\w.&'’\- ]{3,120}?)\s+(?:[Vv][Ss]?\.?|versus)\s+[\s\S]{0,120}?dated\s+(\d{1,2})\s*-\s*(\d{1,2})\s*-\s*(\d{4})/.exec(note.text);
+    if (dated) {
+      const date = `${dated[4]}-${dated[3].padStart(2, '0')}-${dated[2].padStart(2, '0')}`;
+      const wanted = nameWords(dated[1]);
+      const match = store.casesDecidedOn(date).find((row) => {
+        const title = new Set(nameWords(row.title));
+        return wanted.filter((word) => title.has(word)).length >= Math.min(2, wanted.length);
+      });
+      if (match) judgment = { id: match.id, title: match.title, decidedOn: match.decided_on, pdfUrl: match.pdf_url, citation: null };
+    }
+    for (const citation of judgment ? [] : extractCitations(note.text)) {
+      const found = store.findCaseByCitation(citation) ?? (store.findLearnedAlias(citation) ? store.getCase(store.findLearnedAlias(citation).case_id) : null);
+      if (found) {
+        judgment = { id: found.id, title: found.title, decidedOn: found.decided_on, pdfUrl: found.pdf_url, citation: citation.normalized };
+        break;
+      }
+    }
+    return { kind: note.invalidated ? 'struck-down' : 'not-in-force', text: note.text, judgment };
+  });
+};
+
+const checkActCopy = ({ store, act, pages, copyDate, sha256 }) => {
   const copyText = pages.join('\n');
   // The very file the library's text was taken from: nothing to compare.
   if (sha256 && act.source?.source_sha256 === sha256) {
@@ -170,10 +213,18 @@ const checkActCopy = ({ act, pages, copyDate, sha256 }) => {
     };
   }
   const comparison = compareByPresence({ provisions: act.provisions, copyText });
-  const absent = comparison.differs.filter((item) => item.coverage < PRESENT_COVERAGE);
-  const reworded = comparison.differs.filter((item) => item.coverage >= PRESENT_COVERAGE);
+  const byLabel = new Map(act.provisions.map((provision) => [provision.label, provision]));
+  const annotated = comparison.differs.map((item) => {
+    const notes = judicialNotes(store, byLabel.get(item.label));
+    return notes.length ? { ...item, judicial: notes } : item;
+  });
+  const absent = annotated.filter((item) => item.coverage < PRESENT_COVERAGE);
+  const differing = annotated.filter((item) => item.coverage >= PRESENT_COVERAGE);
+  // Where the official text carries an amendment a court struck down, the copy's difference is not an error.
+  const explained = differing.filter((item) => item.judicial?.length);
+  const reworded = differing.filter((item) => !item.judicial?.length);
   const present = comparison.compared - absent.length;
-  const identical = present - reworded.length;
+  const identical = present - differing.length;
   const textCurrentTo = act.code === 'COI' ? latestEffectiveDate(copyText) : null;
   const newer = copyDate ? newerThan(act.provisions, copyDate) : [];
   const partial = absent.length > comparison.compared / 2;
@@ -188,7 +239,7 @@ const checkActCopy = ({ act, pages, copyDate, sha256 }) => {
     : `Your PDF holds ${present} of the ${comparison.compared} comparable provisions of the ${act.title}.`;
   const findings = verdict === 'unreadable'
     ? 'Too little of the Act could be read to compare it: the PDF may be a scan without a text layer.'
-    : `${identical} of them match the official text word for word${reworded.length ? `; ${reworded.length} read differently, each shown with the official words your copy lacks` : ''}.${newer.length ? ` ${newer.length} provisions took effect after your copy's date.` : ''}`;
+    : `${identical} of them match the official text word for word${reworded.length ? `; ${reworded.length} read differently, each shown with the official words your copy lacks` : ''}${explained.length ? `; ${explained.length} differ only where the official text prints an amendment the Supreme Court struck down or that never came into force, so your copy's wording there is not an error` : ''}.${newer.length ? ` ${newer.length} provisions took effect after your copy's date.` : ''}`;
 
   return {
     kind: 'act-copy',
@@ -196,9 +247,10 @@ const checkActCopy = ({ act, pages, copyDate, sha256 }) => {
     actCode: act.code,
     verdict,
     summary: `${scope} ${findings}`,
-    counts: { comparable: comparison.compared, present, identical, reworded: reworded.length, absent: absent.length },
+    counts: { comparable: comparison.compared, present, identical, reworded: reworded.length, explained: explained.length, absent: absent.length, formatting: comparison.formatting },
     partial,
     reworded: reworded.map((item) => ({ ...item, title: humanLabel(act.code, item.label) })),
+    explained: explained.map((item) => ({ ...item, title: humanLabel(act.code, item.label) })),
     absentLabels: absent.map((item) => item.label),
     newerThanCopy: newer,
     textCurrentTo,
@@ -349,7 +401,11 @@ const checkCitations = ({ store, text }) => {
   for (const citation of extractCitations(text)) {
     if (seen.has(citation.normalized) || results.length >= MAX_CITATIONS) continue;
     seen.add(citation.normalized);
-    const before = text.slice(Math.max(0, citation.index - 160), citation.index);
+    // The case name is printed just before its citation, after the previous citation or sentence ends.
+    let before = text.slice(Math.max(0, citation.index - 160), citation.index);
+    const cut = Math.max(before.lastIndexOf(')'), before.lastIndexOf(']'), before.lastIndexOf(';'),
+      ...[...before.matchAll(/\b[a-z]{4,}\.\s+(?=[A-Z])/g)].map((match) => match.index + match[0].length - 1));
+    if (cut > 0) before = before.slice(cut + 1);
     const name = /([A-Z][\w.&'’()\- ]{1,90}?)\s+(?:v\.?|vs\.?|versus)\s+([A-Z][\w.&'’()\- ]{1,90}?)[\s,([]*$/.exec(before);
     let judgment = null;
     let via = null;
@@ -400,13 +456,17 @@ const writeUpClaims = ({ text, references }) => {
     if (sentence.split(' ').length < 8) continue;
     const found = detectLegalReferences(sentence);
     const tags = new Set();
+    const notes = [];
     for (const label of found.constitution) tags.add(tagFor('COI', label));
     for (const { act, label } of found.sections) {
       if (HELD_ACTS[act]) tags.add(tagFor(act, label));
-      for (const tag of tagsByReference.get(`${act} ${label.replace(/^s\./, 's. ')}`.toLowerCase()) || []) tags.add(tag);
+      const successors = HELD_ACTS[act] ? [] : tagsByReference.get(`${act} ${label.replace(/^s\./, 's. ')}`.toLowerCase()) || [];
+      for (const tag of successors) tags.add(tag);
+      // The claim names a repealed section: the critic judges its substance against the successor in force.
+      if (successors.length) notes.push(`${act} ${label} is repealed; [${successors.join('], [')}] carries it forward. Judge what the claim says the law provides against that text, not the section number it uses.`);
     }
     if (!tags.size) continue;
-    claims.push({ n: claims.length + 1, text: sentence.slice(0, 700), tags: [...tags] });
+    claims.push({ n: claims.length + 1, text: sentence.slice(0, 700), tags: [...tags], ...(notes.length ? { note: notes.join(' ') } : {}) });
     if (claims.length >= MAX_CLAIMS) break;
   }
   return claims;
@@ -445,8 +505,11 @@ const checkWriteUp = async ({ store, pages, held, critique }) => {
     ...references.filter((item) => item.status === 'repealed').map((item) => `${item.reference} is repealed${item.successors.length ? `; the law in force is ${item.successors.map((successor) => successor.tag).join(', ')}` : ''}.`),
     ...quotations.filter((item) => item.status === 'cut-before-condition').map((item) => `A quotation from ${item.source} stops before a condition.`),
     ...citations.filter((item) => item.status === 'overruled' || item.status === 'caution').map((item) => `${item.judgment.title} (${item.citation}) has been ${item.status === 'overruled' ? 'overruled' : 'partly overruled or doubted'}.`),
-    ...(critic?.claims || []).filter((claim) => claim.verdict === 'overstated' || claim.verdict === 'unsupported').map((claim) => `A claim goes beyond ${claim.tags.join(', ')}.`),
+    ...(critic?.claims || []).filter((claim) => claim.verdict === 'overstated').map((claim) => `A claim goes beyond ${claim.tags.join(', ')}.`),
   ];
+  // "Unsupported" here means the statute's text does not settle the claim (it may be about a judgment's
+  // holding): shown with the claim, not counted against the document.
+  const unsettled = (critic?.claims || []).filter((claim) => claim.verdict === 'unsupported').length;
   const checked = references.length + quotations.length + citations.length + (critic?.claims?.length || 0);
   const verdict = !checked ? 'nothing-to-check' : errors.length ? 'unreliable' : warnings.length ? 'use-with-care' : 'reliable';
   const summaries = {
@@ -466,6 +529,7 @@ const checkWriteUp = async ({ store, pages, held, critique }) => {
       claims: critic?.claims?.length || 0,
       errors: errors.length,
       warnings: warnings.length,
+      unsettled,
     },
     errors,
     warnings,
@@ -485,6 +549,6 @@ export const checkDocument = async ({ store, pages, copyDate = null, sha256 = nu
   const identity = identifyDocument({ pages, held });
   const base = { ok: true, identified: { kind: identity.kind, code: identity.code, overlaps: identity.overlaps.slice(0, 3), words: identity.words } };
   if (identity.kind === 'repealed') return { ...base, ...checkRepealedCopy({ store, code: identity.code, held }) };
-  if (identity.kind === 'act-copy') return { ...base, ...checkActCopy({ act: held.find((act) => act.code === identity.code), pages, copyDate, sha256 }) };
+  if (identity.kind === 'act-copy') return { ...base, ...checkActCopy({ store, act: held.find((act) => act.code === identity.code), pages, copyDate, sha256 }) };
   return { ...base, ...(await checkWriteUp({ store, pages, held, critique })) };
 };

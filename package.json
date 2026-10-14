@@ -16,5 +16,17 @@
     "speech-synthesis"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.js",
+    "./web/*": "./web/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "web",
+    "workers",
+    "docs",
+    "README.md"
+  ]
 }

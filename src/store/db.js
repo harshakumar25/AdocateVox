@@ -273,7 +273,7 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
              (SELECT MAX(decided_on) FROM court_case WHERE source_key IS NOT NULL) AS latest
     `),
     currentProvisions: db.prepare(`
-      SELECT p.label, p.heading, pv.text, pv.valid_from AS validFrom, p.context
+      SELECT p.label, p.heading, pv.text, pv.valid_from AS validFrom, p.context, pv.footnotes
       FROM provision p JOIN provision_version pv ON pv.provision_id = p.id
       WHERE p.act_id = ? AND pv.valid_to IS NULL ORDER BY p.id
     `),
@@ -368,6 +368,7 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     `),
     learnedAliasOwner: db.prepare('SELECT case_id, votes, method FROM learned_alias WHERE scheme = ? AND normalized = ?'),
     citedByCount: db.prepare('SELECT COUNT(*) AS n FROM case_citation WHERE cited_id = ?'),
+    casesDecidedOn: db.prepare('SELECT id, title, decided_on, pdf_url FROM court_case WHERE decided_on = ? AND source_key IS NOT NULL'),
     storedJudgmentPdfs: db.prepare(`
       SELECT c.id, c.source_key, f.raw_path, f.sha256
       FROM court_case c JOIN fetch_log f ON f.id = (
@@ -924,6 +925,7 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     /** A citation the index learned from parallel citations or names ("(1978) 1 SCC 248"), or null. */
     findLearnedAlias: ({ scheme, normalized }) => statements.learnedAliasOwner.get(scheme, normalized) || null,
     citedByCount: (caseId) => statements.citedByCount.get(caseId).n,
+    casesDecidedOn: (date) => statements.casesDecidedOn.all(date),
     /** How much of a repealed code its successor carries forward: { mapped, new, oldSections }. */
     findCorrespondenceSummary: (oldAct, newAct) => {
       const rows = statements.correspondenceSummary.all(oldAct, newAct);

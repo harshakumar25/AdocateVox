@@ -16,6 +16,8 @@ import path from 'node:path';
 import { extractPdfText } from '../extract/pdfText.js';
 import { CONSTITUTION_ACT } from '../ingest/constitution.js';
 import { compareCopyWithProvisions, latestEffectiveDate, newerThan } from './copyCheck.js';
+import { checkDocument } from './documentCheck.js';
+import { runTextWorker } from '../cases/textIndex.js';
 
 /** Acts whose official text the library holds, so copies of them can be checked. */
 export const CHECKABLE_ACTS = Object.freeze({ constitution: CONSTITUTION_ACT });
@@ -93,13 +95,54 @@ export const checkCopy = async ({ store, url, act = 'constitution', copyDate = n
 /** The PDF format requires "%PDF-" within the first 1024 bytes. */
 const looksLikePdf = (body) => Buffer.isBuffer(body) && body.subarray(0, 1024).includes('%PDF-');
 
+/** Page texts of a PDF through the fast worker (plain text: the document checker needs no layout). */
+const pageTexts = async (file) => {
+  let pages = null;
+  let failure = null;
+  await runTextWorker({
+    files: [file],
+    onRecord: (record) => {
+      pages = record.pages ?? null;
+      failure = record.error ?? null;
+    },
+  });
+  if (!pages) throw new Error(failure || 'The PDF could not be read.');
+  return pages;
+};
+
+/**
+ * An uploaded PDF of any kind: identified first (a copy of an Act LawBuddy holds, a copy of a repealed
+ * code, or a write-up), then checked the way that kind of document must be (see documentCheck.js).
+ * The file is read in a private temporary folder and deleted; only its sha256 is kept with the report.
+ */
+export const checkUploadedDocument = async ({
+  store, body, copyDate = null, readPages = pageTexts, critique, tmpRoot = os.tmpdir(),
+}) => {
+  const sha256 = crypto.createHash('sha256').update(body).digest('hex');
+  const dir = await fs.mkdtemp(path.join(tmpRoot, 'lawbuddy-upload-'));
+  let pages;
+  try {
+    const file = path.join(dir, 'document.pdf');
+    await fs.writeFile(file, body, { mode: 0o600 });
+    pages = await readPages(file);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+  if (!pages.join('').trim()) {
+    return { ok: false, status: 422, error: 'This PDF has no text layer (it is a scan or images), so there is nothing LawBuddy can read in it.' };
+  }
+  const report = await checkDocument({ store, pages, copyDate, sha256, ...(critique ? { critique } : {}) });
+  return report.ok ? { ...report, copy: { url: null, sha256, upload: true, fileDate: copyDate } } : report;
+};
+
 export const checkUploadedCopy = async ({
-  store, body, act = 'constitution', copyDate = null, extract = extractPdfText, now = Date.now, tmpRoot = os.tmpdir(),
+  store, body, act = 'constitution', copyDate = null, extract = extractPdfText, now = Date.now, tmpRoot = os.tmpdir(), readPages, critique,
 }) => {
   if (!looksLikePdf(body)) return { ok: false, status: 415, error: 'That file is not a PDF.' };
   if (copyDate !== null && (!ISO_DATE.test(copyDate) || Number.isNaN(Date.parse(copyDate)))) {
     return { ok: false, status: 400, error: 'The date of your copy must be YYYY-MM-DD.' };
   }
+  if (act === 'auto') return checkUploadedDocument({ store, body, copyDate, tmpRoot, readPages, critique });
   const { error, actRef, actId, official } = resolveAct(store, act);
   if (error) return error;
 
