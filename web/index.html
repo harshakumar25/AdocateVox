@@ -1,22 +1,27 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LawBuddy — Learn Indian law from the official text</title>
-  <meta name="description" content="A voice tutor for judiciary and LLB aspirants that teaches only from the official text of Indian law, and says so when it cannot verify something.">
+  <meta name="description"
+    content="A voice tutor for judiciary and LLB aspirants that teaches only from the official text of Indian law, and says so when it cannot verify something.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="/lawbuddy/assets/lawbuddy.css">
   <script type="module" src="/lawbuddy/assets/home.js"></script>
 </head>
+
 <body>
   <header class="topbar">
     <div class="wrap">
       <a class="brand" href="/lawbuddy" aria-label="LawBuddy home">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0L5 7zm14 0l-3 6a3 3 0 0 0 6 0l-3-6z"/>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0L5 7zm14 0l-3 6a3 3 0 0 0 6 0l-3-6z" />
         </svg>
         LawBuddy
       </a>
@@ -33,10 +38,13 @@
       <div class="wrap">
         <p class="eyebrow">For judiciary &amp; LLB aspirants · lawyers revising</p>
         <h1>Learn Indian law from the <em>official text</em>, explained aloud.</h1>
-        <p class="lede">Ask about any Article, Schedule or right. LawBuddy teaches only from the Constitution as published by the Legislative Department, shows you the exact text it relied on, and tells you plainly when it cannot verify something.</p>
+        <p class="lede">Ask about any Article, Schedule or right. LawBuddy teaches only from the Constitution as
+          published by the Legislative Department, shows you the exact text it relied on, and tells you plainly when it
+          cannot verify something.</p>
         <form class="ask" action="/lawbuddy/teach" method="get" role="search">
           <label class="visually-hidden" for="q">Your question</label>
-          <input id="q" name="q" type="text" required maxlength="500" autocomplete="off" placeholder="e.g. Can the police detain me without telling the reason?">
+          <input id="q" name="q" type="text" required maxlength="500" autocomplete="off"
+            placeholder="e.g. Can the police detain me without telling the reason?">
           <button class="button" type="submit">Teach me</button>
         </form>
         <div class="chips" aria-label="Try a question">
@@ -53,7 +61,8 @@
       <div class="wrap">
         <p class="eyebrow">In the library</p>
         <h2 id="library-title">Verified official texts</h2>
-        <p class="section-note">Every answer is grounded in these documents. Each is stored with its official source and a fingerprint, so you can check it is untouched.</p>
+        <p class="section-note">Every answer is grounded in these documents. Each is stored with its official source and
+          a fingerprint, so you can check it is untouched.</p>
         <div class="cards" id="library" aria-live="polite">
           <p class="empty">Checking the library…</p>
         </div>
@@ -64,7 +73,8 @@
       <div class="wrap">
         <p class="eyebrow">Study with care</p>
         <h2 id="topics-title">Where the printed text can mislead you</h2>
-        <p class="section-note">The official consolidated text keeps some provisions that courts struck down, and some amendments were never brought into force. LawBuddy flags both.</p>
+        <p class="section-note">The official consolidated text keeps some provisions that courts struck down, and some
+          amendments were never brought into force. LawBuddy flags both.</p>
         <div class="cards">
           <a class="card" href="/lawbuddy/teach?q=Explain%20Article%2021">
             <span class="tag info">Part III · Fundamental Rights</span>
@@ -95,9 +105,12 @@
         <p class="eyebrow">How it works</p>
         <h2 id="how-title">Cite or stay silent</h2>
         <ol class="steps">
-          <li><strong>Finds the official text</strong><span>The Article you name, or the provisions that best match your question.</span></li>
-          <li><strong>Teaches it aloud</strong><span>Plain words, one realistic example, and when the text took effect.</span></li>
-          <li><strong>Shows its sources</strong><span>The exact wording it relied on, with any struck-down or pending changes.</span></li>
+          <li><strong>Finds the official text</strong><span>The Article you name, or the provisions that best match your
+              question.</span></li>
+          <li><strong>Teaches it aloud</strong><span>Plain words, one realistic example, and when the text took
+              effect.</span></li>
+          <li><strong>Shows its sources</strong><span>The exact wording it relied on, with any struck-down or pending
+              changes.</span></li>
         </ol>
       </div>
     </section>
@@ -106,8 +119,10 @@
   <footer class="footer">
     <div class="wrap">
       <p>LawBuddy provides legal information for learning. It is not legal advice and does not replace a lawyer.</p>
-      <p>Need legal help? Free legal aid is available through NALSA (helpline 15100) and your State Legal Services Authority.</p>
+      <p>Need legal help? Free legal aid is available through NALSA (helpline 15100) and your State Legal Services
+        Authority.</p>
     </div>
   </footer>
 </body>
+
 </html>

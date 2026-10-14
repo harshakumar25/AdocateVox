@@ -950,10 +950,25 @@ a.card:hover {
   font-weight: 700;
 }
 
-.verdict.ok { background: var(--ok-soft); color: var(--ok); }
-.verdict.warn { background: var(--warn-soft); color: var(--warn); }
-.verdict.danger { background: var(--danger-soft); color: var(--danger); }
-.verdict.info { background: var(--accent-soft); color: var(--accent); }
+.verdict.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.verdict.warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.verdict.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.verdict.info {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
 
 .claim-text {
   margin: 4px 0 0;
@@ -1060,7 +1075,7 @@ a.card:hover {
   font: 500 0.88rem/1.5 var(--font-display);
 }
 
-.case-cited > .button {
+.case-cited>.button {
   margin-top: 10px;
 }
 
@@ -1122,7 +1137,7 @@ a.card:hover {
   margin: 0 0 16px;
 }
 
-.diff-group + .diff-group {
+.diff-group+.diff-group {
   margin-top: 18px;
 }
 
@@ -1204,6 +1219,7 @@ a.card:hover {
 }
 
 @media (max-width: 560px) {
+
   /* Seven columns do not fit a phone: keep rank, judgment, bench, citations and points. */
   .points-table th:nth-child(3),
   .points-table td:nth-child(3),
