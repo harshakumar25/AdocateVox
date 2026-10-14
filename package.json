@@ -1,0 +1,20 @@
+{
+  "name": "@docvex/lawbuddy",
+  "version": "0.1.0",
+  "description": "LawBuddy — Voice-first legal tutor with verified statutory grounding",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "cli": "node --disable-warning=ExperimentalWarning src/cli.js",
+    "lint": "node --check src/**/*.js web/*.js"
+  },
+  "keywords": [
+    "legal-ai",
+    "statutory-grounding",
+    "constitution-of-india",
+    "speech-synthesis"
+  ],
+  "author": "",
+  "license": "MIT"
+}

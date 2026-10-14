@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Check my bare act — LawBuddy</title>
+  <meta name="description" content="Upload a bare act PDF and see whether it matches the official text in force today, provision by provision.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/lawbuddy/assets/lawbuddy.css">
+  <script type="module" src="/lawbuddy/assets/check.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <a class="brand" href="/lawbuddy" aria-label="LawBuddy home">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0L5 7zm14 0l-3 6a3 3 0 0 0 6 0l-3-6z"/>
+        </svg>
+        LawBuddy
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="/lawbuddy">Home</a>
+        <a href="/lawbuddy/teach">Teach me</a>
+        <a href="/lawbuddy/check" aria-current="page">Check my bare act</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="studio">
+    <div class="wrap">
+      <p class="eyebrow">Is my bare act current?</p>
+      <h1>Check your PDF against the <em>official text</em> in force today.</h1>
+      <p class="lede">Free bare act PDFs are often years out of date. Upload yours and LawBuddy compares it, provision by provision, with the official Constitution of India published by the Legislative Department, and shows exactly what your copy is missing.</p>
+
+      <form class="upload" id="check-form">
+        <label for="file">Your bare act (PDF, up to 30 MB)
+          <input id="file" name="file" type="file" accept="application/pdf,.pdf" required>
+        </label>
+        <label for="date">Date printed on your copy (optional)
+          <input id="date" name="date" type="date">
+        </label>
+        <button class="button" type="submit" id="check">Check my copy</button>
+      </form>
+      <p class="section-note">Checks copies of the Constitution of India for now. Your file is read and deleted straight away; LawBuddy keeps only its fingerprint and the report, so the same file is answered instantly next time.</p>
+
+      <div class="grid">
+        <section class="panel" aria-labelledby="verdict-title">
+          <div class="panel-head">
+            <h2 class="panel-title" id="verdict-title">Verdict</h2>
+            <span class="badge" id="verdict" hidden></span>
+            <span class="status" id="status" role="status">Choose a PDF to begin.</span>
+          </div>
+          <p class="summary" id="summary" hidden></p>
+          <ul class="facts" id="facts"></ul>
+          <div class="error" id="error" role="alert" hidden></div>
+        </section>
+
+        <aside class="panel" aria-labelledby="changes-title">
+          <div class="panel-head">
+            <h2 class="panel-title" id="changes-title">What your copy gets wrong</h2>
+          </div>
+          <div id="changes">
+            <p class="empty">Provisions that read differently from the official text, or took effect after your copy, appear here with the words your copy is missing.</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p>LawBuddy provides legal information for learning. It is not legal advice and does not replace a lawyer.</p>
+      <p>Need legal help? Free legal aid is available through NALSA (helpline 15100) and your State Legal Services Authority.</p>
+    </div>
+  </footer>
+</body>
+</html>

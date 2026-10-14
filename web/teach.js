@@ -1,0 +1,558 @@
+// LawBuddy teaching studio: streams a grounded answer from POST /lawbuddy/teach,
+// speaks it (Chatterbox clips, browser speech as fallback) and shows the official
+// text it relied on. Untrusted text is only ever set through textContent.
+import { el, fetchJson, formatDate, hostOf, humanLabel, safeLink } from './common.js';
+import { selectBestSpeechVoice } from './voiceSelector.js';
+import { createCasesView } from './cases.js';
+
+const form = document.getElementById('ask-form');
+const question = document.getElementById('question');
+const teachButton = document.getElementById('teach');
+const stopButton = document.getElementById('stop');
+const voiceToggle = document.getElementById('voice');
+const answer = document.getElementById('answer');
+const statusLine = document.getElementById('status');
+const grounding = document.getElementById('grounding');
+const errorBox = document.getElementById('error');
+const evidence = document.getElementById('evidence');
+const reading = document.getElementById('reading');
+const answerCheck = document.getElementById('answer-check');
+const critiquePanel = document.getElementById('critique');
+const examples = document.getElementById('examples');
+const cases = createCasesView({
+  pointsTable: document.getElementById('points-table'),
+  pointsBody: document.getElementById('points-body'),
+  pointsEmpty: document.getElementById('points-empty'),
+  pointsTitle: document.getElementById('points-title'),
+  casesSection: document.getElementById('cases'),
+  casesList: document.getElementById('case-list'),
+  casesTitle: document.getElementById('cases-title'),
+  casesNote: document.getElementById('cases-note'),
+});
+
+const OFFICIAL_TEXT_PREVIEW_PARAGRAPHS = 4;
+
+let controller = null;
+let runId = 0;
+let streaming = false;
+
+const setStatus = (text) => {
+  statusLine.textContent = text;
+};
+
+const setBusy = (busy) => {
+  streaming = busy;
+  teachButton.disabled = busy;
+  stopButton.hidden = !busy && !voice.playing;
+};
+
+const showError = (message) => {
+  errorBox.textContent = message;
+  errorBox.hidden = false;
+};
+
+// ---------------------------------------------------------------- voice
+
+/** Plays Chatterbox clips and browser speech strictly in arrival order (the server synthesizes in order). */
+const voice = {
+  queue: [],
+  playing: false,
+  generation: 0,
+  audio: null,
+  objectUrl: null,
+
+  reset() {
+    this.generation += 1;
+    this.queue = [];
+    this.playing = false;
+    if (this.audio) {
+      this.audio.onended = null;
+      this.audio.onerror = null;
+      this.audio.pause();
+      this.audio = null;
+    }
+    if (this.objectUrl) URL.revokeObjectURL(this.objectUrl);
+    this.objectUrl = null;
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  },
+
+  enqueue(item) {
+    if (!voiceToggle.checked) return;
+    this.queue.push(item);
+    if (!this.playing) this.next();
+  },
+
+  async next() {
+    const generation = this.generation;
+    const item = this.queue.shift();
+    if (!item) {
+      this.playing = false;
+      stopButton.hidden = !streaming;
+      if (!streaming && errorBox.hidden) setStatus('Done.');
+      return;
+    }
+    this.playing = true;
+    stopButton.hidden = false;
+    try {
+      if (item.fileName) await this.playClip(item.fileName, generation);
+      else await this.speak(item.text);
+    } catch {
+      // A clip that cannot be fetched or played is read by the browser instead.
+      if (generation === this.generation && item.text) await this.speak(item.text);
+    }
+    if (generation === this.generation) this.next();
+  },
+
+  async playClip(fileName, generation) {
+    const response = await fetch(`/audio/${encodeURIComponent(fileName)}`, {
+      headers: { 'X-DocVex-Extension-Origin': window.location.origin },
+    });
+    if (!response.ok) throw new Error(`Audio unavailable (${response.status})`);
+    const blob = await response.blob();
+    if (generation !== this.generation) return;
+    this.objectUrl = URL.createObjectURL(blob);
+    this.audio = new Audio(this.objectUrl);
+    await new Promise((resolve, reject) => {
+      this.audio.onended = resolve;
+      this.audio.onerror = reject;
+      this.audio.play().catch(reject);
+    });
+    URL.revokeObjectURL(this.objectUrl);
+    this.objectUrl = null;
+    this.audio = null;
+  },
+
+  speak(text) {
+    return new Promise((resolve) => {
+      if (!text || !('speechSynthesis' in window)) {
+        resolve();
+        return;
+      }
+      // Never let the browser fall back to its default voice (often Daniel on macOS):
+      // only an allowed voice from the shared selector may read the answer.
+      const chosen = selectBestSpeechVoice(window.speechSynthesis.getVoices());
+      if (!chosen) {
+        resolve();
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.voice = chosen;
+      utterance.lang = chosen.lang;
+      utterance.onend = resolve;
+      utterance.onerror = resolve;
+      window.speechSynthesis.speak(utterance);
+    });
+  },
+};
+
+// Chromium loads the voice list lazily; asking once at start-up means it is ready for the first fallback.
+if ('speechSynthesis' in window) window.speechSynthesis.getVoices();
+
+const splitSentences = (text) =>
+  (String(text).match(/[^.!?]+[.!?]+["'’”)\]]*\s*|[^.!?]+$/g) || []).map((sentence) => sentence.trim()).filter(Boolean);
+
+// ---------------------------------------------------------------- evidence
+
+const placeholderCard = (title) =>
+  el('article', { className: 'provision' }, [
+    el('div', { className: 'provision-head' }, [el('h3', { text: title }), el('p', { className: 'provision-kicker', text: 'Opening the official text…' })]),
+  ]);
+
+const officialText = (text) => {
+  const paragraphs = String(text).split('\n').filter(Boolean);
+  const quote = el('blockquote', { className: 'official' }, paragraphs.map((paragraph) => el('p', { text: paragraph })));
+  if (paragraphs.length <= OFFICIAL_TEXT_PREVIEW_PARAGRAPHS) return [quote];
+
+  quote.classList.add('clamped');
+  const more = el('button', { className: 'more', text: `Show full text (${paragraphs.length} paragraphs)`, attrs: { type: 'button', 'aria-expanded': 'false' } });
+  more.addEventListener('click', () => {
+    const expanded = quote.classList.toggle('clamped') === false;
+    more.textContent = expanded ? 'Show less' : `Show full text (${paragraphs.length} paragraphs)`;
+    more.setAttribute('aria-expanded', String(expanded));
+  });
+  return [quote, more];
+};
+
+// Why a provision was retrieved for this question (from LawBuddy's question analysis).
+const ROLE_CHIPS = Object.freeze({
+  allows: ['Permits', 'ok'],
+  right: ['Your right', 'ok'],
+  forbids: ['Forbids', 'danger'],
+  limits: ['Where the line is', 'warn'],
+  duty: ['Duty of the authorities', 'info'],
+  procedure: ['Procedure', 'info'],
+  consequence: ['If the line is crossed', 'danger'],
+});
+
+/** "s.38" of the BNS → "Section 38"; Articles and Schedules as before. */
+const provisionTitle = (provision) => (provision.act && provision.act !== 'COI' && provision.label?.startsWith('s.')
+  ? `Section ${provision.label.slice(2)}`
+  : humanLabel(provision.label));
+
+const provisionCard = (provision, { viaSearch, role = null }) => {
+  const where = [
+    provision.actTitle || 'Constitution of India',
+    provision.context?.part,
+    provision.context?.chapter && provision.context?.chapterTitle
+      ? `${provision.context.chapter}: ${provision.context.chapterTitle.charAt(0)}${provision.context.chapterTitle.slice(1).toLowerCase()}`
+      : provision.context?.chapter,
+    provision.context?.group,
+  ].filter(Boolean);
+  const [roleText, roleClass] = ROLE_CHIPS[role] || [];
+  const facts = [
+    roleText ? el('li', { className: roleClass, text: roleText }) : null,
+    el('li', { className: 'ok', text: `In force since ${formatDate(provision.inForceSince)}` }),
+    provision.gazette ? el('li', { className: 'info', text: `Gazette ${provision.gazette}` }) : null,
+    provision.lastAmendedBy ? el('li', { text: `Last amended by the ${provision.lastAmendedBy}` }) : null,
+    viaSearch ? el('li', { className: 'info', text: 'Matched by search' }) : null,
+  ];
+  const judicial = provision.judicialNotes?.length
+    ? el('div', { className: 'notice danger', attrs: { role: 'note' } }, [
+      el('strong', { text: 'Not good law as printed' }),
+      el('ul', {}, provision.judicialNotes.map((note) => el('li', { text: note }))),
+    ])
+    : null;
+  const pending = provision.pendingAmendments?.length
+    ? el('div', { className: 'notice warn', attrs: { role: 'note' } }, [
+      el('strong', {
+        text: provision.act
+          ? 'Part of this section is not in force'
+          : `${provision.pendingAmendments.length} amendment${provision.pendingAmendments.length > 1 ? 's' : ''} never brought into force`,
+      }),
+      el('ul', {}, provision.pendingAmendments.map((note) => el('li', { text: note }))),
+    ])
+    : null;
+  const source = provision.source?.url
+    ? el('footer', { className: 'provenance' }, [
+      document.createTextNode('Source: '),
+      safeLink(provision.source.url, hostOf(provision.source.url) || 'official source'),
+      document.createTextNode(provision.source.sha256 ? ` · fingerprint ${provision.source.sha256.slice(0, 12)}…` : ''),
+    ])
+    : null;
+
+  return el('article', { className: 'provision' }, [
+    el('div', { className: 'provision-head' }, [
+      el('p', { className: 'provision-kicker', text: where.join(' · ') }),
+      el('h3', { text: provisionTitle(provision) }, [el('span', { text: provision.heading })]),
+      el('ul', { className: 'facts' }, facts),
+    ]),
+    judicial,
+    pending,
+    ...officialText(provision.text),
+    source,
+  ]);
+};
+
+const absenceCard = (source) =>
+  el('article', { className: 'provision' }, [
+    el('div', { className: 'provision-head' }, [
+      el('p', { className: 'provision-kicker', text: 'Constitution of India' }),
+      el('h3', { text: humanLabel(source.label) }),
+    ]),
+    el('div', { className: 'notice warn', attrs: { role: 'note' } }, [
+      el('strong', { text: 'Not in the official text' }),
+      document.createTextNode('LawBuddy could not find this provision in force in the stored official edition, so it will not describe it.'),
+    ]),
+  ]);
+
+const correspondenceCard = (source, lookup) =>
+  el('article', { className: 'provision' }, [
+    el('div', { className: 'provision-head' }, [
+      el('p', {
+        className: 'provision-kicker',
+        text: (lookup.matches || []).every((match) => match.method === 'alignment')
+          ? 'Old and new law, matched by LawBuddy from the two texts (not the official MHA table)'
+          : 'Official correspondence table (MHA/NCRB Sankalan)',
+      }),
+      el('h3', { text: lookup.query || source.title }),
+    ]),
+    el('ul', { className: 'official' }, (lookup.matches || []).map((match) =>
+      el('li', { text: `${match.old} → ${match.new}${match.shared ? ` · ${Math.round(match.shared * 100)}% of the wording carried over` : match.changed ? ' (changed)' : ''}` }))),
+    source.url ? el('footer', { className: 'provenance' }, [document.createTextNode('Source: '), safeLink(source.url, hostOf(source.url))]) : null,
+  ]);
+
+const renderEvidence = (sources, id) => {
+  if (!sources.length) {
+    evidence.replaceChildren(el('p', {
+      className: 'empty',
+      text: 'No official text matched this question, so LawBuddy will not answer it from memory. Try naming a provision, such as “Article 21”.',
+    }));
+    return;
+  }
+
+  evidence.replaceChildren();
+  for (const source of sources) {
+    const card = placeholderCard(source.label ? provisionTitle(source) : source.title);
+    evidence.append(card);
+
+    const fill = async () => {
+      if (source.kind === 'statute-absence') return absenceCard(source);
+      if (source.kind === 'correspondence' && source.lookup) {
+        const params = new URLSearchParams({ act: source.lookup.act, section: source.lookup.section });
+        const { body } = await fetchJson(`/lawbuddy/api/lookup?${params}`);
+        return correspondenceCard(source, body);
+      }
+      if (source.label) {
+        const path = source.act && source.act !== 'COI'
+          ? `/lawbuddy/api/section/${encodeURIComponent(source.act)}/${encodeURIComponent(source.label)}`
+          : `/lawbuddy/api/article/${encodeURIComponent(source.label)}`;
+        const { ok, body } = await fetchJson(path);
+        if (ok) return provisionCard(body, { viaSearch: source.via === 'search', role: source.role });
+      }
+      return el('article', { className: 'provision' }, [
+        el('div', { className: 'provision-head' }, [el('h3', { text: source.title })]),
+        source.url ? el('footer', { className: 'provenance' }, [document.createTextNode('Source: '), safeLink(source.url, hostOf(source.url))]) : null,
+      ]);
+    };
+    fill()
+      .then((filled) => id === runId && card.replaceWith(filled))
+      .catch(() => id === runId && card.replaceWith(el('p', { className: 'empty', text: `Could not open ${source.title}.` })));
+  }
+};
+
+const KIND_TEXT = Object.freeze({
+  permission: 'a “can I…?” question, so the answer weighs what the law allows against what it forbids and shows where the line is',
+  rights: 'a question about rights, so the answer sets out the rights, the duties of the authorities and their limits',
+  procedure: 'a question about procedure, so the answer gives the steps the law sets out',
+  punishment: 'a question about punishment, so the answer states the offence and the punishment as written',
+  formal: 'a request for a formal write-up, so the answer is a legal note: question, applicable law, analysis, conclusion',
+  definition: 'a request to explain the law',
+  general: 'a general question about the law',
+});
+
+/** How LawBuddy read the question: its kind and the legal concepts it maps to. */
+const showReading = (analysis) => {
+  if (!analysis) {
+    reading.hidden = true;
+    return;
+  }
+  const concepts = (analysis.concepts || []).map((concept) => concept.name);
+  reading.replaceChildren(
+    el('strong', { text: 'How LawBuddy read your question: ' }),
+    document.createTextNode(`${KIND_TEXT[analysis.kind] || KIND_TEXT.general}.${concepts.length ? ` Legal concepts: ${concepts.join('; ')}.` : ''}`),
+  );
+  reading.hidden = false;
+};
+
+/** After the answer: which citations and quotations are tied to the official text it was given. */
+const showCheck = (check) => {
+  if (!check || (!check.citations.length && !check.quotes.length)) {
+    answerCheck.hidden = true;
+    return;
+  }
+  const failures = [
+    ...check.citations.filter((citation) => !citation.ok).map((citation) => (citation.problem
+      ? `[${citation.tag}]: ${citation.problem}.`
+      : `[${citation.tag}] is not one of the provisions LawBuddy retrieved for this answer.`)),
+    ...check.quotes.filter((quote) => !quote.ok).map((quote) => `“${quote.text}” is not word for word in the official text: read the provision itself.`),
+    ...check.quotes.filter((quote) => quote.cutBefore).map((quote) => `“${quote.text}” stops just before a condition in [${quote.source}]: “${quote.cutBefore}…”. The rule is narrower than the quotation suggests.`),
+  ];
+  const summary = `Checked against the official text: ${check.verifiedCitations} of ${check.citations.length} citation${check.citations.length === 1 ? '' : 's'} are provisions retrieved for this answer; ${check.verifiedQuotes} of ${check.quotes.length} quotation${check.quotes.length === 1 ? '' : 's'} found in that text.`;
+  answerCheck.className = `answer-check ${failures.length ? 'warn' : 'ok'}`;
+  answerCheck.replaceChildren(...[
+    el('p', { text: summary }),
+    failures.length ? el('ul', {}, failures.map((failure) => el('li', { text: failure }))) : null,
+  ].filter(Boolean));
+  answerCheck.hidden = false;
+};
+
+const VERDICT_TEXT = Object.freeze({
+  supported: ['Supported by the text', 'ok'],
+  overstated: ['Overstated: the text is narrower', 'warn'],
+  contradicted: ['Contradicted by the text', 'danger'],
+  unsupported: ['Not in the cited text', 'warn'],
+  unchecked: ['Not checked', 'info'],
+});
+
+/** The independent critique: each claim that cites a provision, read beside that provision's text. */
+const showCritique = (critique) => {
+  if (!critique?.claims?.length) {
+    critiquePanel.hidden = true;
+    return;
+  }
+  const flagged = critique.claims.filter((claim) => claim.verdict !== 'supported' && claim.verdict !== 'unchecked');
+  const unchecked = critique.claims.filter((claim) => claim.verdict === 'unchecked');
+  const supported = critique.claims.filter((claim) => claim.verdict === 'supported');
+  const card = (claim) => {
+    const [label, tone] = VERDICT_TEXT[claim.verdict] || VERDICT_TEXT.unchecked;
+    return el('li', { className: `claim ${tone}` }, [
+      el('span', { className: `verdict ${tone}`, text: label }),
+      el('p', { className: 'claim-text', text: claim.text }),
+      claim.reason ? el('p', { className: 'claim-reason', text: claim.reason }) : null,
+      claim.correction ? el('p', { className: 'claim-correction' }, [el('strong', { text: 'What the text says: ' }), document.createTextNode(claim.correction)]) : null,
+    ]);
+  };
+  critiquePanel.replaceChildren(...[
+    el('h3', { text: 'Critique: every claim read against the law it cites' }),
+    el('p', {
+      className: 'critique-summary',
+      text: `${critique.claims.length} claim${critique.claims.length === 1 ? '' : 's'} read by a second model (${critique.model}): ${supported.length} supported, ${flagged.length} flagged${unchecked.length ? `, ${unchecked.length} not checked` : ''}.${flagged.length ? ' Read the flagged ones with the official text open.' : ''}`,
+    }),
+    flagged.length ? el('ol', { className: 'claims' }, flagged.map(card)) : null,
+    supported.length
+      ? el('details', {}, [el('summary', { text: `Supported claims (${supported.length})` }), el('ol', { className: 'claims' }, supported.map(card))])
+      : null,
+    unchecked.length
+      ? el('details', {}, [el('summary', { text: `Not checked (${unchecked.length})` }), el('ol', { className: 'claims' }, unchecked.map(card))])
+      : null,
+  ].filter(Boolean));
+  critiquePanel.hidden = false;
+};
+
+const showGrounding = (metadata) => {
+  const sources = metadata.sources || [];
+  const onlyAbsences = sources.length > 0 && sources.every((source) => source.kind === 'statute-absence');
+  const grounded = metadata.groundingStatus === 'grounded' && !onlyAbsences;
+  grounding.textContent = grounded ? 'Grounded in the official text' : onlyAbsences ? 'Not found in the official text' : 'Not in the library';
+  grounding.className = `badge ${grounded ? 'ok' : 'warn'}`;
+  grounding.hidden = false;
+};
+
+// ---------------------------------------------------------------- streaming
+
+const readEvents = async (response, onEvent) => {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let boundary;
+    while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+      const block = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      let event = 'message';
+      const data = [];
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event:')) event = line.slice(6).trim();
+        else if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
+      }
+      if (!data.length) continue;
+      try {
+        onEvent(event, JSON.parse(data.join('\n')));
+      } catch {
+        // ignore a malformed event rather than abandon the whole answer
+      }
+    }
+  }
+};
+
+const teach = async (text) => {
+  const id = ++runId;
+  controller?.abort();
+  controller = new AbortController();
+  voice.reset();
+  setBusy(true);
+  errorBox.hidden = true;
+  grounding.hidden = true;
+  answer.classList.remove('placeholder');
+  answer.replaceChildren();
+  reading.hidden = true;
+  answerCheck.hidden = true;
+  critiquePanel.hidden = true;
+  evidence.replaceChildren(el('p', { className: 'empty', text: 'Finding the official text…' }));
+  cases.reset();
+  setStatus('Finding the official text…');
+
+  let chatterboxOn = false;
+  try {
+    const response = await fetch('/lawbuddy/teach', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({ text, stream: true, requestId: `lawbuddy_${Date.now()}_${id}` }),
+      signal: controller.signal,
+    });
+    if (!response.ok || !response.body) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `LawBuddy could not answer (HTTP ${response.status}).`);
+    }
+
+    await readEvents(response, (event, data) => {
+      if (id !== runId) return;
+      if (event === 'metadata') {
+        chatterboxOn = Boolean(data.chatterbox?.enabled);
+        showGrounding(data);
+        showReading(data.analysis);
+        renderEvidence(data.sources || [], id);
+        // The judgments shown are for the first Article the answer is grounded in.
+        const lead = (data.sources || []).find((source) => source.kind === 'statute' && source.label?.startsWith('Art.'));
+        if (lead) cases.load(lead.label);
+        else cases.reset('Supreme Court judgments appear here when the answer is grounded in an Article of the Constitution.');
+        setStatus('Teaching…');
+      } else if (event === 'token') {
+        answer.append(document.createTextNode(data.token));
+      } else if (event === 'audio_ready') {
+        voice.enqueue({ fileName: data.fileName, text: data.speechText || data.sentence });
+        setStatus('Speaking…');
+      } else if (event === 'audio_error') {
+        voice.enqueue({ text: data.speechText || data.sentence });
+      } else if (event === 'done') {
+        showCheck(data.check);
+        showCritique(data.critique);
+      } else if (event === 'speech_done' && !chatterboxOn) {
+        setStatus('Checking every claim against the law…');
+        for (const sentence of splitSentences(answer.textContent)) voice.enqueue({ text: sentence });
+      } else if (event === 'error') {
+        showError(data.error || 'LawBuddy could not finish this answer.');
+      }
+    });
+  } catch (error) {
+    if (error.name !== 'AbortError' && id === runId) showError(error.message);
+  } finally {
+    if (id === runId) {
+      // Never leave a "Done" with an empty box under a grounding badge.
+      if (errorBox.hidden && !answer.textContent.trim() && !controller.signal.aborted) {
+        showError('LawBuddy received no explanation this time. Please ask again.');
+      }
+      setBusy(false);
+      if (!voice.playing) setStatus(errorBox.hidden ? 'Done.' : 'Stopped.');
+    }
+  }
+};
+
+// ---------------------------------------------------------------- wiring
+
+form.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const text = question.value.trim();
+  if (!text) return;
+  window.history.replaceState(null, '', `/lawbuddy/teach?q=${encodeURIComponent(text)}`);
+  teach(text);
+});
+
+question.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    form.requestSubmit();
+  }
+});
+
+stopButton.addEventListener('click', () => {
+  runId += 1;
+  controller?.abort();
+  voice.reset();
+  setBusy(false);
+  stopButton.hidden = true;
+  setStatus('Stopped.');
+});
+
+voiceToggle.addEventListener('change', () => {
+  if (!voiceToggle.checked) {
+    voice.reset();
+    stopButton.hidden = !streaming;
+  }
+});
+
+examples.addEventListener('click', (event) => {
+  const chip = event.target.closest('.chip');
+  if (!chip) return;
+  question.value = chip.textContent;
+  form.requestSubmit();
+});
+
+const initial = new URLSearchParams(window.location.search).get('q');
+if (initial) {
+  question.value = initial;
+  teach(initial.trim());
+}
