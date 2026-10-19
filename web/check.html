@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Check my bare act — LawBuddy</title>
-  <meta name="description" content="Upload a bare act or your notes: LawBuddy checks it against the official text in force and the Supreme Court record.">
+  <meta name="description" content="Upload a bare act or legal notes for an evidence-linked comparison with LawBuddy's imported official sources.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap">
@@ -24,6 +24,7 @@
         <a href="/lawbuddy">Home</a>
         <a href="/lawbuddy/teach">Teach me</a>
         <a href="/lawbuddy/check" aria-current="page">Check my bare act</a>
+        <a href="/lawbuddy/practice">Practice workbench</a>
       </nav>
     </div>
   </header>
@@ -32,18 +33,23 @@
     <div class="wrap">
       <p class="eyebrow">Check my bare act, or my notes</p>
       <h1>Is what you are reading <em>accurate law</em>?</h1>
-      <p class="lede">Upload a bare act PDF, or your notes, an article, an answer or a commentary. LawBuddy first works out what the document is, then checks it the way that kind of document must be checked: a bare act section by section against the official Gazette text and the judgments that struck parts of it down; notes and articles claim by claim, with every section, quotation and case citation checked against the official text and the Supreme Court's own record.</p>
+      <p class="lede">Upload a bare act PDF, notes, an article, an answer or a commentary. LawBuddy identifies the document and compares the parts it can read with official sources imported into its library. It reports differences, missing provisions and citations that need review.</p>
 
       <form class="upload" id="check-form">
         <label for="file">Your PDF (up to 30 MB)
-          <input id="file" name="file" type="file" accept="application/pdf,.pdf" required>
+          <input id="file" name="file" type="file" accept="application/pdf,.pdf" aria-describedby="upload-disclosure" required>
         </label>
         <label for="date">Date printed on a bare act (optional)
           <input id="date" name="date" type="date">
         </label>
+        <label class="upload-option" for="local-only">
+          <input id="local-only" name="local-only" type="checkbox" aria-describedby="upload-disclosure" checked>
+          <span>Local-only processing. Skip the optional AI analysis of claims in notes and write-ups.</span>
+        </label>
+        <p class="upload-disclosure" id="upload-disclosure">Your PDF is processed temporarily and deleted. If you turn off local-only processing, selected claim text and official excerpts may be sent to Groq for AI analysis when the server is configured to use it. Do not upload confidential client material unless that use is appropriate.</p>
         <button class="button" type="submit" id="check">Check it</button>
       </form>
-      <p class="section-note">Checks copies of the Constitution of India, the Bharatiya Nyaya Sanhita, the Bharatiya Nagarik Suraksha Sanhita and the Bharatiya Sakshya Adhiniyam; recognises copies of the repealed IPC, CrPC and Evidence Act; and fact-checks any write-up that cites them. Your file is read and deleted straight away; LawBuddy keeps only its fingerprint.</p>
+      <p class="section-note">Checks copies of the Constitution of India, the Bharatiya Nyaya Sanhita, the Bharatiya Nagarik Suraksha Sanhita and the Bharatiya Sakshya Adhiniyam; recognises copies of the repealed IPC, CrPC and Evidence Act; and examines write-ups that cite them. Your uploaded PDF is deleted after processing. Results reflect the official sources imported into LawBuddy's library, which may need a freshness check for later amendments, commencement notices and judgments.</p>
 
       <div class="grid">
         <section class="panel" aria-labelledby="verdict-title">
@@ -62,7 +68,7 @@
             <h2 class="panel-title" id="changes-title">What LawBuddy found</h2>
           </div>
           <div id="changes">
-            <p class="empty">Upload a PDF: what LawBuddy finds, with the official text behind every finding, appears here.</p>
+            <p class="empty">Upload a PDF to see the provisions LawBuddy could compare, differences it found and anything that needs manual review.</p>
           </div>
         </aside>
       </div>

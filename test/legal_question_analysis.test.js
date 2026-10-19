@@ -41,6 +41,25 @@ test('lay words map to legal concepts and to the provisions on each side of the 
   }
 });
 
+test('an accused security researcher is routed to cyber law, not FIR filing or physical self-defence', async () => {
+  const question = 'I am an individual cyber security researcher. I did penetration testing on a website for white hacking practice. The owner of the website filed a case against me. My intention was good. How can I defend myself?';
+  const analysis = analyseQuestion(question);
+  assert.equal(analysis.kind, 'scenario');
+  assert.deepEqual(analysis.concepts.map((concept) => concept.id), ['unauthorised-security-testing']);
+  assert.deepEqual(analyseQuestion('I did penetration testing; the owner filed an FIR against me. How can I defend myself?').concepts.map((concept) => concept.id),
+    ['unauthorised-security-testing'], 'being named in an FIR is not a request to register one');
+  assert.deepEqual(analysis.provisions.map((provision) => provision.label).sort(), ['s.43', 's.66']);
+  const store = bnsLibrary();
+  try {
+    const retrieve = createLawRetriever({ loader: { get: async () => store }, asOf: '2026-10-19' });
+    const evidence = await retrieve({ text: question });
+    assert.equal(evidence.length, 0, 'unrelated statute text must not substitute for the missing IT Act');
+    assert.match(evidence.analysis.warnings[0], /sections 43 and 66.*not indexed/i);
+  } finally {
+    store.close();
+  }
+});
+
 const S101 = [
   'Except in the cases hereinafter excepted, culpable homicide is murder,––',
   '(a) if the act by which the death is caused is done with the intention of causing death; or',

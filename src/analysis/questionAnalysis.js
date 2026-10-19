@@ -26,7 +26,12 @@ export const QUESTION_KINDS = Object.freeze(['formal', 'scenario', 'permission',
 // about liability or applicability.
 const SITUATION_FACTS = /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|some|all|both)\s+(?:of\s+(?:them|those)\s+)?(?:persons?|people|men|women|accused|of them|friends|members)\b|\b(?:had|has|was|were)\s+(?:committed|involved|present|not present|linked|killed|robbed|attacked|planned)\b|\b(?:a|an)\s+(?:person|man|woman|offence|crime)\s+(?:had|has|was|is)\b/i;
 const SITUATION_ASK = /\b(?:whether|liable|guilty|applicable|which law applies|what offence)\b/i;
-export const isSituation = (text) => SITUATION_FACTS.test(text) && SITUATION_ASK.test(text) && String(text).length > 80;
+const ACCUSED_SECURITY_SCENARIO = /\b(?:penetration test(?:ing)?|pen\s*test(?:ing)?|ethical hack(?:ing)?|white[ -]?hat|security research(?:er)?|vulnerability (?:test(?:ing)?|research|discovery)|bug bounty)\b/i;
+const CASE_AGAINST_RESEARCHER = /\b(?:filed|lodged|registered|made|brought)\s+(?:a\s+)?(?:case|complaint|fir|report)\s+against\s+(?:me|us)|\b(?:owner|company|website|police)\b.{0,60}\b(?:accused|complained|filed a case|filed an fir)\b/i;
+export const isSituation = (text) => (
+  (SITUATION_FACTS.test(text) && SITUATION_ASK.test(text) && String(text).length > 80)
+  || (ACCUSED_SECURITY_SCENARIO.test(text) && CASE_AGAINST_RESEARCHER.test(text))
+);
 
 const KIND_PATTERNS = [
   // A request for an official document or a formal legal write-up.
@@ -51,12 +56,27 @@ const BNS = 'BNS';
 const BNSS = 'BNSS';
 const BSA = 'BSA';
 const COI = 'COI';
+const IT = 'IT2000';
 
 /**
  * The concept index. Triggers are lay and legal phrasings; each provision carries the role it plays and
  * `expect`, a pattern its official heading must match before it is used.
  */
 export const LEGAL_CONCEPTS = Object.freeze([
+  {
+    id: 'unauthorised-security-testing',
+    focus: /permission|authori[sz]|scope|access|dishonest|fraudulent|computer resource|damage|data|testing/i,
+    name: 'Cybersecurity testing, authorisation and computer-related liability',
+    triggers: [
+      /\b(?:penetration test(?:ing)?|pen\s*test(?:ing)?|ethical hack(?:ing)?|white[ -]?hat|security research(?:er)?|bug bounty)\b/i,
+      /\b(?:unauthori[sz]ed|without permission|without consent)\b.{0,70}\b(?:access|website|server|system|network|test(?:ing)?)\b/i,
+      /\b(?:hack(?:ed|ing)?|vulnerability)\b.{0,70}\b(?:website|system|server|security|report(?:ed|ing)?|owner)\b/i,
+    ],
+    provisions: [
+      { act: IT, label: 's.43', role: 'limits', expect: /penalty and compensation.*damage to computer/i },
+      { act: IT, label: 's.66', role: 'forbids', expect: /computer related offences/i },
+    ],
+  },
   {
     id: 'private-defence',
     focus: /private defence|assailant/i,
@@ -127,7 +147,7 @@ export const LEGAL_CONCEPTS = Object.freeze([
     id: 'fir',
     focus: /information|officer in charge|refus|police station|electronic communication/i,
     name: 'Reporting an offence to the police (FIR)',
-    triggers: [/\bfir\b/i, /\bfirst information report\b/i, /\b(?:file|lodge|register)\w*\s+(?:a\s+)?(?:complaint|case|report)\b/i, /\bpolice (?:refuse|refused|not registering|won'?t register|did not register)\b/i, /\bzero fir\b|\be-?fir\b/i],
+    triggers: [/\b(?:how|where)\b.{0,35}\b(?:file|lodge|register)\b.{0,15}\b(?:fir|complaint|report)\b/i, /\b(?:file|lodge|register)\s+(?:an?\s+)?fir\b/i, /\bfirst information report\b/i, /\bpolice (?:refuse|refused|not registering|won'?t register|did not register)\b/i, /\bzero fir\b|\be-?fir\b/i],
     provisions: [
       { act: BNSS, label: 's.173', role: 'procedure', expect: /information in cognizable cases/i },
       { act: BNSS, label: 's.174', role: 'procedure', expect: /non-cognizable cases/i },
@@ -262,7 +282,17 @@ const ROLE_ORDER = ['scope', 'allows', 'right', 'forbids', 'liability', 'limits'
  */
 export const analyseQuestion = (text) => {
   const value = String(text || '');
-  const concepts = LEGAL_CONCEPTS.filter((concept) => concept.triggers.some((trigger) => trigger.test(value)));
+  const matched = LEGAL_CONCEPTS.filter((concept) => concept.triggers.some((trigger) => trigger.test(value)));
+  // "Defend myself against a cybercrime case" concerns legal defence, not physical private defence.
+  const withoutPhysicalDefence = matched.some((concept) => concept.id === 'unauthorised-security-testing')
+    && !/\b(?:attack(?:ed|ing)?|assault(?:ed|ing)?|physical(?:ly)?|weapon|kill|hurt|self[- ]?defen[cs]e)\b/i.test(value)
+    ? matched.filter((concept) => concept.id !== 'private-defence' && concept.id !== 'private-defence-property')
+    : matched;
+  const concepts = CASE_AGAINST_RESEARCHER.test(value)
+    && withoutPhysicalDefence.some((concept) => concept.id === 'unauthorised-security-testing')
+    && !/\b(?:how|where)\b.{0,35}\b(?:file|lodge|register)\b.{0,15}\b(?:fir|complaint|report)\b|\bpolice (?:refuse|refused|not registering)\b/i.test(value)
+    ? withoutPhysicalDefence.filter((concept) => concept.id !== 'fir')
+    : withoutPhysicalDefence;
   const seen = new Set();
   const provisions = [];
   for (const concept of concepts) {

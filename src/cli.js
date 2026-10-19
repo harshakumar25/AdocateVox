@@ -37,7 +37,7 @@ import { parseSankalanTable } from './parse/sankalanTable.js';
 import { ingestConstitution } from './ingest/constitution.js';
 import { ingestCentralAct } from './ingest/act.js';
 import { buildCorrespondence } from './compare/buildCorrespondence.js';
-import { getConstitutionProvision, lookupSection, searchLaw, toConstitutionLabel } from './service.js';
+import { getConstitutionProvision, lookupSection, searchCatalog, searchLaw, toConstitutionLabel } from './service.js';
 import { createWatcher } from './watch/watcher.js';
 import { drainChangeEvents } from './watch/events.js';
 import { runWatchLoop } from './watch/scheduler.js';
@@ -59,7 +59,8 @@ const USAGE = `Usage:
   npm run legal -- lookup <act> <section>     acts: BNS IPC BNSS CrPC BSA IEA
   npm run legal -- ingest-constitution <url>
   npm run legal -- article <21 | 21A | Preamble | Sch.7> [YYYY-MM-DD]
-  npm run legal -- search <words...>
+  npm run legal -- catalog [words...]
+  npm run legal -- search [--act ACT_ID] [--as-of YYYY-MM-DD] <words...>
   npm run legal -- watch once [--listings-only]
   npm run legal -- watch run
   npm run legal -- watch status
@@ -247,8 +248,20 @@ const run = async ([command, ...args]) => {
     if (command === 'article' && (args.length === 1 || args.length === 2)) {
       return getConstitutionProvision(store, ...args);
     }
+    if (command === 'catalog') {
+      return searchCatalog(store, { query: args.join(' ') });
+    }
     if (command === 'search' && args.length > 0) {
-      return searchLaw(store, args.join(' '));
+      let act = null;
+      let asOf = undefined;
+      const words = [];
+      for (let index = 0; index < args.length; index += 1) {
+        if (args[index] === '--act' && args[index + 1]) act = args[++index];
+        else if (args[index] === '--as-of' && args[index + 1]) asOf = args[++index];
+        else if (args[index].startsWith('--')) return null;
+        else words.push(args[index]);
+      }
+      return searchLaw(store, words.join(' '), { act, asOf });
     }
     if (command === 'check-copy' && (args.length === 1 || args.length === 2)) {
       return await checkCopy({ store, url: args[0], copyDate: args[1] ?? null });

@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "1.0.0",
+  "status": "design-contract; the workbench currently implements the first five instruments with explicit form logic",
+  "common": {
+    "matter": ["instrumentId", "clientName", "filingDate"],
+    "sourceAssertion": ["text", "kind:record|instruction|inference|assumption", "documentId", "pageOrSpan", "reviewedBy", "reviewedAt"],
+    "forum": ["courtOrAuthority", "courtLevel", "district", "stateOrUT", "territorialBasis", "subjectMatterBasis", "pecuniaryBasis", "localRuleVersion"],
+    "outputStates": ["working", "reviewed", "filing-preflight-passed"],
+    "neverInferred": ["caseNumber", "registeredFIR", "partyIdentity", "admission", "consent", "annexureAttached", "caseHolding", "jurisdictionEstablished"]
+  },
+  "instruments": [
+    {
+      "id": "fir-information",
+      "family": "litigation",
+      "status": "implemented-working-draft",
+      "required": ["clientName", "incidentDate", "incidentPlace", "policeStation", "allegations", "chronology", "evidence", "filingDate"],
+      "sections": ["addressee", "informant", "occurrence", "chronology", "conduct", "sources", "request", "signature"],
+      "reviewGates": ["cognizable-offence-assessment", "personal-knowledge-vs-hearsay", "receiving-station-vs-occurrence", "acknowledgement-and-escalation"],
+      "authority": ["BNSS:173", "CrPC:154:historical"]
+    },
+    {
+      "id": "anticipatory-bail",
+      "family": "litigation",
+      "status": "implemented-working-draft",
+      "required": ["clientName", "court", "courtLevel", "courtDistrict", "courtState", "jurisdictionBasis", "filingPlace", "casePoliceStation", "offenceSections", "allegations", "response", "chronology", "grounds", "priorOrders", "risks", "adverseFacts", "arrestConcern", "relief"],
+      "sections": ["caption", "forum-and-jurisdiction", "procedural-history", "fair-prosecution-case", "record-chronology", "grounds", "adverse-facts", "risk-response", "annexure-list", "prayer", "verification-check"],
+      "reviewGates": ["high-court-or-sessions", "BNSS:482(4):express-exclusion", "special-statute", "earlier-orders", "notice-and-local-form"],
+      "authority": ["BNSS:482", "CrPC:438:historical"]
+    },
+    {
+      "id": "regular-bail",
+      "family": "litigation",
+      "status": "implemented-working-draft",
+      "required": ["clientName", "court", "courtLevel", "courtDistrict", "courtState", "jurisdictionBasis", "filingPlace", "casePoliceStation", "offenceSections", "allegations", "response", "custodySince", "chronology", "grounds", "priorOrders", "risks", "adverseFacts", "relief"],
+      "sections": ["caption", "forum-and-jurisdiction", "arrest-remand-history", "fair-prosecution-case", "record-chronology", "grounds", "adverse-facts", "risk-response", "annexure-list", "prayer", "verification-check"],
+      "reviewGates": ["magistrate-vs-sessions-high-court-power", "special-statute", "remand-record", "earlier-orders", "notice-and-local-form"],
+      "authority": ["BNSS:480|483:forum-dependent", "CrPC:437|439:historical-forum-dependent"]
+    },
+    {
+      "id": "civil-adjournment",
+      "family": "litigation",
+      "status": "implemented-working-draft",
+      "required": ["clientName", "court", "caseNumber", "hearingDate", "hearingStage", "adjournmentReason", "witnessStatus", "priorAdjournments", "adjournmentRelief"],
+      "sections": ["caption", "current-listing", "specific-cause", "avoidance-steps", "witness-status", "adjournment-history", "limited-prayer"],
+      "reviewGates": ["sufficient-cause", "earlier-hearing-adjournments", "witness-presence", "opposition-and-costs", "no-counsel-engaged-elsewhere-ground"],
+      "authority": ["CPC:Order-XVII-rule-1"]
+    },
+    {
+      "id": "legal-opinion",
+      "family": "research",
+      "status": "implemented-working-structure",
+      "required": ["clientName", "opinionQuestion", "opinionJurisdiction", "opinionFacts", "opinionAuthorities", "opinionAnalysis", "opinionConclusion"],
+      "sections": ["question", "scope-and-date", "materials", "facts", "assumptions", "primary-authorities", "contrary-material", "analysis", "bounded-conclusion", "next-steps"],
+      "reviewGates": ["fact-source-separation", "citation-and-paragraph-verification", "later-treatment", "contrary-authority", "second-review"],
+      "authority": ["selected-by-counsel; never-auto-claimed"]
+    },
+    {
+      "id": "civil-plaint",
+      "family": "litigation",
+      "status": "planned",
+      "required": ["plaintiff", "defendant", "court", "causeOfAction", "causeOfActionDate", "jurisdictionFacts", "relief", "valuation", "courtFeeBasis"],
+      "sections": ["caption", "parties", "cause-of-action", "jurisdiction", "limitation", "valuation-and-court-fee", "reliefs", "schedule-of-documents", "verification"],
+      "reviewGates": ["Order-VII-rule-1", "territorial-subject-matter-pecuniary", "limitation", "court-fee", "local-filing-rule"],
+      "authority": ["CPC:Order-VII-rule-1"]
+    },
+    {
+      "id": "settlement-agreement",
+      "family": "transactional",
+      "status": "planned",
+      "required": ["partyIdentities", "capacityAndAuthority", "disputeOrTransaction", "considerationAndPerformance", "releaseScope", "defaultAndRemedy", "executionPlace"],
+      "sections": ["parties", "recitals", "definitions", "obligations", "payment-and-taxes", "release", "no-admission-if-agreed", "default", "disputes", "execution", "schedules"],
+      "reviewGates": ["consent-capacity", "property-or-registration", "pending-case-disposal", "stamp-duty", "confidentiality-and-enforceability"],
+      "authority": ["Indian-Contract-Act:10-14", "instrument-and-state-specific-laws"]
+    },
+    {
+      "id": "bill-concept",
+      "family": "legislative",
+      "status": "planned",
+      "required": ["legislativeCompetence", "policyObjective", "existingLaw", "operativeChange", "implementationAuthority"],
+      "sections": ["long-title", "extent", "commencement", "definitions", "operative-clauses", "delegation", "transition", "repeal-and-savings", "financial-memorandum"],
+      "reviewGates": ["constitutional-competence", "existing-law-conflict", "delegation-limits", "commencement", "legislative-department-review"],
+      "authority": ["Constitution", "applicable-legislative-rules", "existing-Act"]
+    },
+    {
+      "id": "government-scheme",
+      "family": "policy",
+      "status": "planned",
+      "required": ["authority", "objective", "eligiblePersons", "funding", "implementingBody", "reviewMechanism"],
+      "sections": ["authority", "definitions", "eligibility", "benefits", "application-process", "grievance", "audit", "sunset-or-review"],
+      "reviewGates": ["budget-and-approval", "equality-and-exclusion", "data-handling", "accessibility", "notification-vs-administrative-policy"],
+      "authority": ["enabling-Act-or-executive-power", "finance-and-department-rules"]
+    }
+  ]
+}

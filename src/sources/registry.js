@@ -3,8 +3,8 @@
  *
  * Tier decides what may be cited as evidence:
  *   0 = primary official (court, Gazette, India Code, legislative.gov.in) — citable.
- *   1 = official mirror / secondary (AWS Open Data mirror, SUVAS translations) — citable,
- *       linked back to the tier-0 original where one exists.
+ *   1 = official mirror / secondary (AWS Open Data mirror, government-hosted copies) —
+ *       source lead only for statute evidence until reconciled with a tier-0 original.
  *   2 = signal only (news) — never cited; only triggers a tier-0/1 fetch.
  * Hosts not listed here are never fetched.
  */
@@ -26,6 +26,13 @@ export const LEGAL_SOURCES = Object.freeze([
     baseUrl: 'https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com',
     hosts: ['indian-high-court-judgments.s3.ap-south-1.amazonaws.com'],
     maxBytes: 150 * 1024 * 1024,
+  },
+  {
+    id: 'mes-gazette-copy',
+    name: 'Military Engineer Services (government-hosted Gazette copy)',
+    tier: 1,
+    baseUrl: 'https://emb.mes.gov.in',
+    hosts: ['emb.mes.gov.in'],
   },
   {
     id: 'sci',
@@ -61,6 +68,48 @@ export const LEGAL_SOURCES = Object.freeze([
     tier: 0,
     baseUrl: 'https://www.sebi.gov.in',
     hosts: ['sebi.gov.in'],
+  },
+  {
+    id: 'meity',
+    name: 'Ministry of Electronics and Information Technology',
+    tier: 0,
+    baseUrl: 'https://www.meity.gov.in',
+    hosts: ['meity.gov.in'],
+  },
+  {
+    id: 'cert-in',
+    name: 'Indian Computer Emergency Response Team',
+    tier: 0,
+    baseUrl: 'https://www.cert-in.org.in',
+    hosts: ['cert-in.org.in'],
+  },
+  {
+    id: 'dot',
+    name: 'Department of Telecommunications',
+    tier: 0,
+    baseUrl: 'https://dot.gov.in',
+    hosts: ['dot.gov.in', 'eservices.dot.gov.in'],
+  },
+  {
+    id: 'consumer-affairs',
+    name: 'Department of Consumer Affairs',
+    tier: 0,
+    baseUrl: 'https://consumeraffairs.nic.in',
+    hosts: ['consumeraffairs.nic.in'],
+  },
+  {
+    id: 'bis',
+    name: 'Bureau of Indian Standards',
+    tier: 0,
+    baseUrl: 'https://www.bis.gov.in',
+    hosts: ['bis.gov.in', 'services.bis.gov.in'],
+  },
+  {
+    id: 'rbi',
+    name: 'Reserve Bank of India',
+    tier: 0,
+    baseUrl: 'https://www.rbi.org.in',
+    hosts: ['rbi.org.in'],
   },
   {
     id: 'mca',
@@ -130,4 +179,14 @@ export const findSourceForUrl = (url, sources = LEGAL_SOURCES) => {
       source.hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`)),
     ) || null
   );
+};
+
+/** A stored version may be shown as official legal evidence only with provenance on a primary HTTPS source. */
+export const isCitableOfficialSource = (url, sha256) => {
+  if (!url || !sha256) return false;
+  try {
+    return new URL(url).protocol === 'https:' && findSourceForUrl(url)?.tier === 0;
+  } catch {
+    return false;
+  }
 };
