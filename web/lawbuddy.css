@@ -1789,4 +1789,8 @@ a.card:hover {
 .report-source h4 { margin: 0 0 7px; }
 .report-source p { white-space: pre-wrap; font-size: .84rem; max-height: 220px; overflow: auto; margin-top: 9px; }
 .report-source a { color: #8a5400; }
+.report-intake { margin: 18px 0; padding: 14px; border: 1px solid var(--border); border-radius: 8px; }
+.report-intake summary { cursor: pointer; font-weight: 600; }
+.report-alert { padding: 12px 14px; border-left: 4px solid #bd7600; background: rgba(189, 118, 0, .10); }
+.report-section li { margin-bottom: 10px; }
 @media print { .report-page .practice-input, .report-page #report-export { display: none !important; } .report-page .practice-layout { display: block; } .report-section, .report-source { break-inside: avoid; } }

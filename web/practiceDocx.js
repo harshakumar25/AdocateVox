@@ -25,7 +25,7 @@ const paragraph = (value, style = 'Normal', options = {}) => {
   const lines = String(value).split('\n');
   const contents = lines.map((line, index) => `${index ? '<w:r><w:br/></w:r>' : ''}${runs(line)}`).join('');
   const keepLines = lines.length > 1 && value.length < 1000;
-  return `<w:p><w:pPr><w:pStyle w:val="${style}"/>${options.pageBreakBefore ? '<w:pageBreakBefore/>' : ''}${keepLines ? '<w:keepLines/>' : ''}</w:pPr>${contents}</w:p>`;
+  return `<w:p><w:pPr><w:pStyle w:val="${style}"/>${options.list ? '<w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr>' : ''}${options.pageBreakBefore ? '<w:pageBreakBefore/>' : ''}${keepLines ? '<w:keepLines/>' : ''}</w:pPr>${contents}</w:p>`;
 };
 
 const TITLES = Object.freeze({
@@ -35,6 +35,7 @@ const TITLES = Object.freeze({
   'civil-adjournment': 'Civil hearing adjournment working draft',
   'legal-opinion': 'Legal opinion working draft',
   'legal-report': 'Legal research report working document',
+  'case-identity-check': 'Case identity check',
 });
 
 const paragraphStyle = (block) => {
@@ -57,9 +58,10 @@ const packageDocument = (packet, createdAt) => {
   if (packet.draft.length > 1_000_000) throw new RangeError('The draft is too large for browser export.');
 
   const body = [
-    paragraph(title, 'Title'),
-    paragraph('Working document for advocate review. Not a filing copy.', 'Subtitle'),
-    ...packet.draft.split(/\n\s*\n/).filter(Boolean).flatMap(draftBlock),
+    ...(packet.documentBlocks ? [] : [paragraph(title, 'Title'), paragraph('Working document for advocate review. Not a filing copy.', 'Subtitle')]),
+    ...(packet.documentBlocks ? packet.documentBlocks.map((block, index) => paragraph(block.text, index === 0 ? 'Title' : block.kind === 'heading' ? 'Heading1' : 'Normal', { list: block.kind === 'list' }))
+      : packet.draft.split(/\n\s*\n/).filter(Boolean).flatMap(draftBlock)),
+    ...(packet.documentBlocks ? [] : [
     paragraph('Internal review notes', 'Heading1', { pageBreakBefore: true }),
     paragraph('This section is outside the proposed filing text. Resolve these items against the file and current local rules before use.', 'ReviewNote'),
     paragraph('Facts and documents to confirm', 'Heading2'),
@@ -69,6 +71,7 @@ const packageDocument = (packet, createdAt) => {
     ...(packet.transition ? [paragraph('Historical law and transition', 'Heading2'), paragraph(packet.transition)] : []),
     paragraph('Limits of this working document', 'Heading2'),
     ...(packet.limitations || []).map((item, index) => paragraph(`${index + 1}. ${item}`)),
+    ]),
   ].join('');
   const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
   const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -84,13 +87,15 @@ const packageDocument = (packet, createdAt) => {
   const types = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`;
   const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`;
   const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  const numbering = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="singleLevel"/><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="•"/><w:lvlJc w:val="left"/><w:pPr><w:tabs><w:tab w:val="num" w:pos="360"/></w:tabs><w:ind w:left="360" w:hanging="180"/></w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>';
   return [
-    ['[Content_Types].xml', types],
+    ['[Content_Types].xml', packet.documentBlocks ? types.replace('</Types>', '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/></Types>') : types],
     ['_rels/.rels', rels],
     ['docProps/core.xml', core],
     ['word/document.xml', document],
     ['word/styles.xml', styles],
-    ['word/_rels/document.xml.rels', documentRels],
+    ['word/_rels/document.xml.rels', packet.documentBlocks ? documentRels.replace('</Relationships>', '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/></Relationships>') : documentRels],
+    ...(packet.documentBlocks ? [['word/numbering.xml', numbering]] : []),
   ];
 };
 
