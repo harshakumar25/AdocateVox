@@ -123,19 +123,28 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       SELECT pv.source_url, pv.source_sha256 FROM provision_version pv JOIN provision p ON p.id = pv.provision_id
       WHERE p.act_id = ? AND pv.source_url IS NOT NULL
         AND pv.valid_from <= ? AND (pv.valid_to IS NULL OR pv.valid_to > ?)
+        AND (pv.verified_through IS NULL OR pv.verified_through >= ?)
       ORDER BY pv.id DESC LIMIT 1
     `),
     verifiedActCoverageAsOf: db.prepare(`
       SELECT COUNT(DISTINCT p.id) AS provisions FROM provision p
       JOIN provision_version pv ON pv.provision_id = p.id
       WHERE p.act_id = ? AND pv.valid_from <= ? AND (pv.valid_to IS NULL OR pv.valid_to > ?)
+        AND (pv.verified_through IS NULL OR pv.verified_through >= ?)
         AND is_citable_official_source(pv.source_url, pv.source_sha256) = 1
     `),
     verifiedActSourceAsOf: db.prepare(`
       SELECT pv.source_url, pv.source_sha256 FROM provision_version pv JOIN provision p ON p.id = pv.provision_id
       WHERE p.act_id = ? AND pv.valid_from <= ? AND (pv.valid_to IS NULL OR pv.valid_to > ?)
+        AND (pv.verified_through IS NULL OR pv.verified_through >= ?)
         AND is_citable_official_source(pv.source_url, pv.source_sha256) = 1
       ORDER BY pv.id DESC LIMIT 1
+    `),
+    lastBoundedReview: db.prepare(`
+      SELECT MAX(pv.verified_through) AS reviewed_through FROM provision_version pv
+      JOIN provision p ON p.id = pv.provision_id
+      WHERE p.act_id = ? AND pv.verified_through IS NOT NULL AND pv.verified_through < ?
+        AND is_citable_official_source(pv.source_url, pv.source_sha256) = 1
     `),
     upsertProvision: db.prepare(`
       INSERT INTO provision (act_id, label, heading, context) VALUES (?, ?, ?, ?)
@@ -150,11 +159,11 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     closeVersion: db.prepare('UPDATE provision_version SET valid_to = ? WHERE id = ?'),
     insertVersion: db.prepare(`
       INSERT INTO provision_version (provision_id, text, valid_from, amended_by_ref, gazette_ref,
-                                     source_url, source_sha256, footnotes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                     source_url, source_sha256, footnotes, verified_through)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `),
     rewriteVersion: db.prepare(`
-      UPDATE provision_version SET text = ?, amended_by_ref = ?, gazette_ref = ?, footnotes = ? WHERE id = ?
+      UPDATE provision_version SET text = ?, amended_by_ref = ?, gazette_ref = ?, footnotes = ?, verified_through = ? WHERE id = ?
     `),
     deleteFts: db.prepare('DELETE FROM provision_fts WHERE rowid = ?'),
     provisionMeta: db.prepare('SELECT label, heading FROM provision WHERE id = ?'),
@@ -164,6 +173,14 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       FROM provision_version pv JOIN provision p ON p.id = pv.provision_id
       WHERE p.act_id = ? AND p.label = ?
         AND pv.valid_from <= ? AND (pv.valid_to IS NULL OR pv.valid_to > ?)
+        AND (pv.verified_through IS NULL OR pv.verified_through >= ?)
+    `),
+    lastProvisionReview: db.prepare(`
+      SELECT pv.verified_through, pv.source_url, pv.source_sha256
+      FROM provision_version pv JOIN provision p ON p.id = pv.provision_id
+      WHERE p.act_id = ? AND p.label = ? AND pv.verified_through IS NOT NULL
+        AND is_citable_official_source(pv.source_url, pv.source_sha256) = 1
+      ORDER BY pv.verified_through DESC LIMIT 1
     `),
     // Ranking weights: label 2x, heading 5x, body 1x — a provision titled "Right to education."
     // should outrank one that merely mentions education.
@@ -176,6 +193,7 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       JOIN provision p ON p.id = pv.provision_id
       JOIN act a ON a.id = p.act_id
       WHERE provision_fts MATCH ? AND pv.valid_from <= ? AND (pv.valid_to IS NULL OR pv.valid_to > ?)
+        AND (pv.verified_through IS NULL OR pv.verified_through >= ?)
       ORDER BY score LIMIT ?
     `),
     searchVerifiedAsOf: db.prepare(`
@@ -187,6 +205,7 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       JOIN provision p ON p.id = pv.provision_id
       JOIN act a ON a.id = p.act_id
       WHERE provision_fts MATCH ? AND pv.valid_from <= ? AND (pv.valid_to IS NULL OR pv.valid_to > ?)
+        AND (pv.verified_through IS NULL OR pv.verified_through >= ?)
         AND is_citable_official_source(pv.source_url, pv.source_sha256) = 1
       ORDER BY score LIMIT ?
     `),
@@ -199,6 +218,7 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       JOIN provision p ON p.id = pv.provision_id
       JOIN act a ON a.id = p.act_id
       WHERE provision_fts MATCH ? AND p.act_id = ? AND pv.valid_from <= ? AND (pv.valid_to IS NULL OR pv.valid_to > ?)
+        AND (pv.verified_through IS NULL OR pv.verified_through >= ?)
       ORDER BY score LIMIT ?
     `),
     searchVerifiedActAsOf: db.prepare(`
@@ -210,6 +230,7 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       JOIN provision p ON p.id = pv.provision_id
       JOIN act a ON a.id = p.act_id
       WHERE provision_fts MATCH ? AND p.act_id = ? AND pv.valid_from <= ? AND (pv.valid_to IS NULL OR pv.valid_to > ?)
+        AND (pv.verified_through IS NULL OR pv.verified_through >= ?)
         AND is_citable_official_source(pv.source_url, pv.source_sha256) = 1
       ORDER BY score LIMIT ?
     `),
@@ -219,6 +240,12 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     aliasOwner: db.prepare('SELECT case_id FROM citation_alias WHERE scheme = ? AND normalized = ?'),
     insertAlias: db.prepare('INSERT INTO citation_alias (case_id, scheme, normalized) VALUES (?, ?, ?)'),
     caseById: db.prepare('SELECT * FROM court_case WHERE id = ?'),
+    reportCaseCandidates: db.prepare(`
+      SELECT id, court, title, decided_on, case_no, source_url, pdf_url
+      FROM court_case
+      WHERE lower(title) LIKE ? AND lower(title) LIKE ? AND substr(decided_on, 1, 4) = ?
+      ORDER BY decided_on DESC, id DESC LIMIT 12
+    `),
     versionMatches: db.prepare('SELECT 1 AS hit FROM provision_fts WHERE rowid = ? AND provision_fts MATCH ?'),
     stats: db.prepare(`
       SELECT
@@ -520,13 +547,19 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
   const actSource = (actId) => statements.actSource.get(actId) ?? null;
   const actSourceAsOf = (actId, date) => {
     assertIsoDate(date, 'date');
-    return statements.actSourceAsOf.get(actId, date, date) ?? null;
+    return statements.actSourceAsOf.get(actId, date, date, date) ?? null;
   };
   const verifiedActCoverageAsOf = (actId, date) => {
     assertIsoDate(date, 'date');
-    const provisions = statements.verifiedActCoverageAsOf.get(actId, date, date).provisions;
-    const source = provisions ? statements.verifiedActSourceAsOf.get(actId, date, date) : null;
+    const provisions = statements.verifiedActCoverageAsOf.get(actId, date, date, date).provisions;
+    const source = provisions ? statements.verifiedActSourceAsOf.get(actId, date, date, date) : null;
     return { provisions, source: source ?? null };
+  };
+  const lastBoundedReview = (actId, beforeDate) => {
+    assertIsoDate(beforeDate, 'beforeDate');
+    const reviewedThrough = statements.lastBoundedReview.get(actId, beforeDate)?.reviewed_through ?? null;
+    if (!reviewedThrough) return null;
+    return { reviewedThrough, ...verifiedActCoverageAsOf(actId, reviewedThrough) };
   };
 
   const upsertProvision = ({ actId, label, heading = null, context = null }) =>
@@ -546,9 +579,13 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
    */
   const addProvisionVersion = ({
     provisionId, text, validFrom, amendedByRef = null, gazetteRef = null,
-    sourceUrl = null, sourceSha256 = null, footnotes = null,
+    sourceUrl = null, sourceSha256 = null, footnotes = null, verifiedThrough = null,
   }) => {
     assertIsoDate(validFrom, 'validFrom');
+    if (verifiedThrough !== null) {
+      assertIsoDate(verifiedThrough, 'verifiedThrough');
+      if (verifiedThrough < validFrom) throw new RangeError('verifiedThrough must not precede validFrom');
+    }
     if (typeof text !== 'string' || !text.trim()) {
       throw new TypeError('text must be a non-empty string');
     }
@@ -558,15 +595,18 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       const current = statements.openVersion.get(provisionId);
       if (current) {
         const sameSource = Boolean(sourceSha256) && current.source_sha256 === sourceSha256 && current.valid_from === validFrom;
-        if (current.text === text) {
+        // A newly reviewed official edition with identical wording still needs its own
+        // dated source provenance. Keep the old no-op behaviour for an unchanged or
+        // source-less re-ingest; a different source hash falls through to a new version.
+        if (current.text === text && (!sourceSha256 || current.source_sha256 === sourceSha256)) {
           // Same text: only a re-parse of the same document may refresh its metadata.
-          if (sameSource && (current.footnotes !== footnotesJson || current.amended_by_ref !== amendedByRef)) {
-            statements.rewriteVersion.run(text, amendedByRef, gazetteRef, footnotesJson, current.id);
+          if (sameSource && (current.footnotes !== footnotesJson || current.amended_by_ref !== amendedByRef || current.verified_through !== verifiedThrough)) {
+            statements.rewriteVersion.run(text, amendedByRef, gazetteRef, footnotesJson, verifiedThrough, current.id);
           }
           return Number(current.id);
         }
         if (sameSource) {
-          statements.rewriteVersion.run(text, amendedByRef, gazetteRef, footnotesJson, current.id);
+          statements.rewriteVersion.run(text, amendedByRef, gazetteRef, footnotesJson, verifiedThrough, current.id);
           indexVersion(Number(current.id), provisionId, text);
           return Number(current.id);
         }
@@ -580,7 +620,7 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
 
       const versionId = Number(
         statements.insertVersion.run(
-          provisionId, text, validFrom, amendedByRef, gazetteRef, sourceUrl, sourceSha256, footnotesJson,
+          provisionId, text, validFrom, amendedByRef, gazetteRef, sourceUrl, sourceSha256, footnotesJson, verifiedThrough,
         ).lastInsertRowid,
       );
       indexVersion(versionId, provisionId, text);
@@ -590,8 +630,9 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
 
   const getProvisionAsOf = ({ actId, label, date }) => {
     assertIsoDate(date, 'date');
-    return statements.versionAsOf.get(actId, label, date, date) || null;
+    return statements.versionAsOf.get(actId, label, date, date, date) || null;
   };
+  const lastProvisionReview = ({ actId, label }) => statements.lastProvisionReview.get(actId, label) ?? null;
 
   /**
    * BM25-ranked provision search; current law by default, or the law as on `asOf`.
@@ -603,8 +644,8 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     const date = asOf ?? new Date().toISOString().slice(0, 10);
     assertIsoDate(date, 'asOf');
     return actId === null
-      ? (officialOnly ? statements.searchVerifiedAsOf : statements.searchAsOf).all(ftsQuery, date, date, limit)
-      : (officialOnly ? statements.searchVerifiedActAsOf : statements.searchActAsOf).all(ftsQuery, actId, date, date, limit);
+      ? (officialOnly ? statements.searchVerifiedAsOf : statements.searchAsOf).all(ftsQuery, date, date, date, limit)
+      : (officialOnly ? statements.searchVerifiedActAsOf : statements.searchActAsOf).all(ftsQuery, actId, date, date, date, limit);
   };
 
   const addCase = ({ court, title, decidedOn = null, benchStrength = null }) => {
@@ -970,9 +1011,11 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     actSource,
     actSourceAsOf,
     verifiedActCoverageAsOf,
+    lastBoundedReview,
     upsertProvision,
     addProvisionVersion,
     getProvisionAsOf,
+    lastProvisionReview,
     searchProvisions,
     termCoverage,
     addCase,
@@ -1016,6 +1059,10 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       const row = statements.caseById.get(id);
       return row ? { ...row, coram: row.coram ? JSON.parse(row.coram) : [], aliases: statements.aliasesForCase.all(id) } : null;
     },
+    reportCaseCandidates: ({ partyA, partyB, year }) => statements.reportCaseCandidates.all(
+      `%${String(partyA).toLowerCase().replace(/[%_]/g, '')}%`,
+      `%${String(partyB).toLowerCase().replace(/[%_]/g, '')}%`, String(year),
+    ).map((row) => ({ ...row, aliases: statements.aliasesForCase.all(row.id).map((item) => item.normalized) })),
     currentProvisions,
     countProvisionsAsOf,
     saveCopyCheck,

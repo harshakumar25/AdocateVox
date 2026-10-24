@@ -49,11 +49,15 @@ const render = async () => {
 render();
 
 const catalogCard = (item) => el('article', { className: 'card' }, [
-  el('span', { className: `tag ${item.status === 'indexed-as-of' ? 'ok' : 'warn'}`, text: item.status === 'indexed-as-of' ? `${item.indexedSections} provisions indexed as of ${catalogAsOf}` : 'Official source identified · text not indexed' }),
+  el('span', { className: `tag ${item.status === 'indexed-as-of' ? 'ok' : 'warn'}`, text: item.status === 'indexed-as-of'
+    ? `${item.indexedSections} provisions indexed as of ${catalogAsOf}`
+    : item.status === 'indexed-historical'
+      ? `${item.historicalIndexedSections} provisions reviewed through ${item.reviewedThrough} · current text not verified`
+      : 'Official source identified · text not indexed' }),
   el('h3', { text: item.title }),
   el('p', { text: `${item.instrumentType}${item.actNumber ? ` · ${item.actNumber}` : ''}${item.parentId ? ` · under ${item.parentId}` : ''} · ${item.topics.map((topic) => topic.replace(/-/g, ' ')).join(' · ')}` }),
   item.note ? el('p', { className: 'research-caution', text: item.note }) : null,
-  el('p', {}, [safeLink(item.indexedSourceUrl || item.sourceUrl, item.status === 'indexed-as-of' ? 'Open indexed source' : 'Open official source')]),
+  el('p', {}, [safeLink(item.indexedSourceUrl || item.historicalSourceUrl || item.sourceUrl, item.status === 'source-identified' ? 'Open official source' : 'Open reviewed source')]),
 ].filter(Boolean));
 
 const showCatalog = () => {

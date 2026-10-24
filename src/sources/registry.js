@@ -45,8 +45,10 @@ export const LEGAL_SOURCES = Object.freeze([
     id: 'india-code',
     name: 'India Code (Legislative Department)',
     tier: 0,
-    baseUrl: 'https://www.indiacode.nic.in',
-    hosts: ['indiacode.nic.in'],
+    // The former official host announces migration to indiacode.gov.in. Keep both
+    // for archived source URLs; do not rewrite provenance for stored snapshots.
+    baseUrl: 'https://indiacode.gov.in',
+    hosts: ['indiacode.gov.in', 'indiacode.nic.in'],
   },
   {
     id: 'legislative',

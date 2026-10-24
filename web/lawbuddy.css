@@ -1767,3 +1767,26 @@ a.card:hover {
     border-color: #333;
   }
 }
+
+/* Reports share the chamber workbench typography and card language. */
+.report-page textarea {
+  width: 100%;
+  min-height: 190px;
+  resize: vertical;
+  margin: 8px 0 18px;
+}
+.report-prompt-label { display: block; font-weight: 600; }
+.report-online { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; }
+.report-help { color: var(--muted); font-size: .86rem; margin: 7px 0 20px; }
+.report-page .practice-result { min-width: 0; }
+.report-section { padding: 17px 0; border-top: 1px solid var(--border); }
+.report-section h3 { font-family: var(--font-display); font-size: 1.18rem; margin: 0 0 11px; }
+.report-section p, .report-section li { line-height: 1.65; overflow-wrap: anywhere; }
+.report-section p { margin: 0 0 11px; }
+.report-section ul { margin: 0; padding-left: 20px; }
+.report-source-ids { color: var(--accent); font-size: .85em; font-weight: 600; white-space: nowrap; }
+.report-source { padding: 14px; margin: 10px 0; border: 1px solid var(--border); border-radius: 8px; background: var(--paper); color: var(--paper-text); }
+.report-source h4 { margin: 0 0 7px; }
+.report-source p { white-space: pre-wrap; font-size: .84rem; max-height: 220px; overflow: auto; margin-top: 9px; }
+.report-source a { color: #8a5400; }
+@media print { .report-page .practice-input, .report-page #report-export { display: none !important; } .report-page .practice-layout { display: block; } .report-section, .report-source { break-inside: avoid; } }

@@ -34,6 +34,7 @@ const TITLES = Object.freeze({
   'regular-bail': 'Regular bail application working draft',
   'civil-adjournment': 'Civil hearing adjournment working draft',
   'legal-opinion': 'Legal opinion working draft',
+  'legal-report': 'Legal research report working document',
 });
 
 const paragraphStyle = (block) => {

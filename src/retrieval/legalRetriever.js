@@ -211,6 +211,7 @@ const sectionEvidence = (code, version, { note = null, budget = MAX_EVIDENCE_CHA
     note,
     version.gazette_ref ? `Official text (Gazette of India ${version.gazette_ref}), indexed as in force since ${version.valid_from}:`
       : `Stored official-source text, indexed as in force since ${version.valid_from}; verify amendments and commencement against the linked source:`,
+    version.verified_through ? `This edition was reviewed through ${version.verified_through}; it is unavailable for later as-of dates until a newer edition is checked.` : null,
     condenseSection(version.text, budget, focus),
     ...footnotes.filter((item) => item.pending).map((item) => `NOT IN FORCE — ${item.text}`),
     ...footnotes.filter((item) => item.invalidated).map((item) => `JUDICIAL CAUTION — ${item.text}`),
@@ -392,7 +393,10 @@ export const conceptEvidence = ({ store, analysis, asOf }) => {
     const actId = actIdFor(store, provision.act);
     const version = actId ? store.getProvisionAsOf({ actId, label: provision.label, date: asOf }) : null;
     if (!version) {
-      warnings.push(`${citationTag(provision.act, provision.label)} is not in the library.`);
+      const prior = actId ? store.lastProvisionReview?.({ actId, label: provision.label }) : null;
+      warnings.push(prior?.verified_through < asOf
+        ? `${citationTag(provision.act, provision.label)} was last verified through ${prior.verified_through}, not ${asOf}.`
+        : `${citationTag(provision.act, provision.label)} is not in the library.`);
       continue;
     }
     if (!provision.expect.test(String(version.heading || '').replace(/\.$/, ''))) {
@@ -483,12 +487,13 @@ const searchEvidence = (store, question, asOf, limit) => {
  * Attaches the question analysis (kind, concepts, the answer format) to the evidence for the prompt, as a
  * non-enumerable property: the evidence stays a plain array of evidence items for every other reader.
  */
-const withAnalysis = (evidence, analysis, warnings = []) => Object.defineProperty(evidence, 'analysis', {
+const withAnalysis = (evidence, analysis, warnings = [], coverage = null) => Object.defineProperty(evidence, 'analysis', {
   value: {
     kind: analysis.kind,
     concepts: analysis.concepts,
     direction: evidence.length ? answerDirection(analysis.kind) : null,
     warnings,
+    ...(coverage ? { coverage } : {}),
     // The question itself, so the answer check can tell a quotation of the question from one of the law.
     question: analysis.question ?? null,
   },
@@ -507,6 +512,34 @@ export const createLawRetriever = ({ loader, asOf, searchLimit = 3 }) => async (
 
   const analysis = { ...analyseQuestion(params.text), question: String(params.text || '') };
   const references = detectLegalReferences(params.text);
+  // A named procedural section must not short-circuit the merits of a cyber-defence question.
+  // Require both independently verified IT Act provisions, including their expected headings,
+  // before any other evidence is allowed into the answer prompt.
+  if (analysis.concepts.some((concept) => concept.id === 'unauthorised-security-testing')) {
+    const { evidence: core, warnings } = conceptEvidence({ store, analysis, asOf: date });
+    const missing = ['s.43', 's.66'].filter((label) => !core.some((item) => item.kind === 'statute' && item.act === 'IT2000' && item.label === label));
+    if (missing.length) {
+      const itActId = actIdFor(store, 'IT2000');
+      const missingProvisions = missing.map((label) => {
+        const reviewedThrough = itActId ? store.lastProvisionReview?.({ actId: itActId, label })?.verified_through : null;
+        return { act: 'IT2000', label, ...(reviewedThrough ? { reviewedThrough } : {}) };
+      });
+      return withAnalysis([], analysis, [
+        `Information Technology Act, 2000 ${missing.map((label) => `section ${label.slice(2)}`).join(' and ')} ${missing.length === 1 ? 'is' : 'are'} needed to answer this question but verified text is not indexed for ${date}.`,
+        ...warnings,
+      ], { status: 'unavailable', missing: missingProvisions, asOf: date });
+    }
+    const named = references.constitution.length || references.sections.length
+      ? retrieveLegalEvidence({ store, references, asOf: date }) : [];
+    const seen = new Set();
+    const evidence = [...core, ...named].filter((item) => {
+      const key = item.kind === 'statute' ? `${item.act}:${item.label}` : `${item.kind}:${item.title}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return withAnalysis(evidence, analysis, warnings, { status: 'ready', missing: [], asOf: date });
+  }
   if (references.constitution.length || references.sections.length) {
     const evidence = retrieveLegalEvidence({ store, references, asOf: date });
     if (evidence.length) return withAnalysis(evidence, analysis);
@@ -514,15 +547,6 @@ export const createLawRetriever = ({ loader, asOf, searchLimit = 3 }) => async (
   // The question's legal concepts ("protecting myself" → private defence; "kill" → culpable homicide).
   if (analysis.provisions.length) {
     const { evidence, warnings } = conceptEvidence({ store, analysis, asOf: date });
-    // A cybercrime defence question cannot be answered from incidental FIR, arrest or evidence
-    // provisions when the IT Act provisions that govern the alleged testing are unavailable.
-    if (analysis.concepts.some((concept) => concept.id === 'unauthorised-security-testing')
-      && !evidence.some((item) => item.act === 'IT2000' && ['s.43', 's.66'].includes(item.label))) {
-      return withAnalysis([], analysis, [
-        'Information Technology Act, 2000 sections 43 and 66 are needed to answer this question but their verified text is not indexed.',
-        ...warnings,
-      ]);
-    }
     if (evidence.length) return withAnalysis(evidence, analysis, warnings);
   }
   return withAnalysis(searchEvidence(store, params.text, date, searchLimit), analysis);

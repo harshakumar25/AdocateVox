@@ -7,6 +7,8 @@ import { casesForProvision, citingJudgments } from './cases/service.js';
 import { prepareCaseBrief } from './cases/brief.js';
 import { verifyCaseCitation } from './cases/citationVerify.js';
 import { createPoliteFetcher } from './sources/fetcher.js';
+import { createLegalReport } from './reports/report.js';
+import { generateReportText } from './reports/provider.js';
 
 const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
 
@@ -111,6 +113,9 @@ export const getLawBuddyFiles = () => {
     '/lawbuddy/teach': [path.join(LAWBUDDY_WEB_DIR, 'teach.html'), 'text/html; charset=utf-8'],
     '/lawbuddy/check': [path.join(LAWBUDDY_WEB_DIR, 'check.html'), 'text/html; charset=utf-8'],
     '/lawbuddy/practice': [path.join(LAWBUDDY_WEB_DIR, 'practice.html'), 'text/html; charset=utf-8'],
+    '/lawbuddy/reports': [path.join(LAWBUDDY_WEB_DIR, 'reports.html'), 'text/html; charset=utf-8'],
+    '/lawbuddy/assets/reports.js': [path.join(LAWBUDDY_WEB_DIR, 'reports.js'), 'text/javascript; charset=utf-8'],
+    '/lawbuddy/assets/reportDocx.js': [path.join(LAWBUDDY_WEB_DIR, 'reportDocx.js'), 'text/javascript; charset=utf-8'],
     '/lawbuddy/assets/practice.js': [path.join(LAWBUDDY_WEB_DIR, 'practice.js'), 'text/javascript; charset=utf-8'],
     '/lawbuddy/assets/practiceModel.js': [path.join(LAWBUDDY_WEB_DIR, 'practiceModel.js'), 'text/javascript; charset=utf-8'],
     '/lawbuddy/assets/practiceDocx.js': [path.join(LAWBUDDY_WEB_DIR, 'practiceDocx.js'), 'text/javascript; charset=utf-8'],
@@ -159,10 +164,13 @@ export const handleLawBuddyApiRoute = async (req, res, {
   libraryMissingMessage = 'LawBuddy legal library is not installed. Import and ingest it first, e.g. npm run legal -- ingest-constitution <url>.',
   checkUpload = checkUploadedCopy,
   prepareBrief = prepareCaseBrief,
+  reportGenerate = generateReportText,
+  reportOptions = {},
 }) => {
   const isUpload = req.method === 'POST' && pathname === '/lawbuddy/api/copy-check';
+  const isReport = req.method === 'POST' && pathname === '/lawbuddy/api/reports';
   const briefMatch = req.method === 'POST' ? /^\/lawbuddy\/api\/cases\/(\d+)\/brief$/.exec(pathname) : null;
-  if ((req.method !== 'GET' && !isUpload && !briefMatch) || !pathname.startsWith('/lawbuddy/api/')) {
+  if ((req.method !== 'GET' && !isUpload && !isReport && !briefMatch) || !pathname.startsWith('/lawbuddy/api/')) {
     return false;
   }
 
@@ -180,7 +188,23 @@ export const handleLawBuddyApiRoute = async (req, res, {
   }
 
   let result = null;
-  if (isUpload) {
+  if (pathname === '/lawbuddy/api/reports/providers') {
+    result = { ok: true, providers: {
+      ollama: { configured: true },
+      grok: { configured: Boolean(reportOptions.XAI_API_KEY || process.env.XAI_API_KEY) },
+      groq: { configured: Boolean(reportOptions.GROQ_API_KEY || process.env.GROQ_API_KEY) },
+    } };
+  } else if (isReport) {
+    const body = await readBody(req, 16 * 1024);
+    if (!body) result = { ok: false, status: 413, error: 'Report request is too large.' };
+    else {
+      let input;
+      try { input = JSON.parse(body.toString('utf8')); } catch { input = null; }
+      result = input && typeof input === 'object' ? await createLegalReport({ store, input,
+        generate: (args) => reportGenerate({ ...args, options: reportOptions }),
+      }) : { ok: false, status: 400, error: 'Send a JSON report request.' };
+    }
+  } else if (isUpload) {
     result = await handleCopyUpload(req, store, parsedUrl, checkUpload);
   } else if (briefMatch) {
     req.resume();

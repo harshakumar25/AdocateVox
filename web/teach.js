@@ -277,11 +277,17 @@ const correspondenceCard = (source, lookup) =>
 const renderEvidence = (sources, id, analysis = null) => {
   if (!sources.length) {
     const cyberGap = (analysis?.concepts || []).some((concept) => concept.id === 'unauthorised-security-testing');
+    const missing = analysis?.coverage?.missing?.filter((item) => item.act === 'IT2000') || [{ label: 's.43' }, { label: 's.66' }];
+    const missingText = missing.length === 1 ? `section ${missing[0].label.slice(2)}` : `sections ${missing.map((item) => item.label.slice(2)).join(' and ')}`;
+    const reviewed = missing.filter((item) => item.reviewedThrough);
+    const cyberMessage = reviewed.length
+      ? `This is a cyber-law question. IT Act ${missingText} ${missing.length === 1 ? 'is' : 'are'} needed, but ${reviewed.map((item) => `section ${item.label.slice(2)} was reviewed only through ${item.reviewedThrough}`).join('; ')}. LawBuddy cannot assess the case for the requested date from older text or FIR provisions alone.`
+      : `This is a cyber-law question. The verified text of IT Act ${missingText} is not indexed here yet, so LawBuddy cannot assess your case from the FIR provisions alone.`;
     evidence.replaceChildren(
       el('p', { className: 'empty', text: cyberGap
-        ? 'This is a cyber-law question. The verified text of IT Act sections 43 and 66 is not indexed here yet, so LawBuddy cannot assess your case from the FIR provisions alone.'
+        ? cyberMessage
         : 'No official text matched this question, so LawBuddy will not answer it from memory. Try naming a provision, such as “Article 21”.' }),
-      ...(cyberGap ? [el('p', {}, [document.createTextNode('Read the '), safeLink('https://www.indiacode.nic.in/indiacode/handle/123456789/1999?view_type=browse', 'official IT Act listing'), document.createTextNode(' and speak with an Indian cybercrime lawyer if a complaint or FIR has been filed.')])] : []),
+      ...(cyberGap ? [el('p', {}, [document.createTextNode('Read the '), safeLink('https://indiacode.gov.in/', 'India Code portal'), document.createTextNode(' and speak with an Indian cybercrime lawyer if a complaint or FIR has been filed.')])] : []),
     );
     return;
   }

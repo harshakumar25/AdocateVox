@@ -38,7 +38,7 @@ const act = (id, title, year, actNumber, sourceUrl, topics, aliases = [], note =
 
 export const PRACTICE_ACTS = Object.freeze([
   act('COI', 'Constitution of India', 1950, null, 'https://www.legislative.gov.in/static/uploads/2025/07/c9fe9c9b6840524844316f74bb1c556c.pdf', ['administrative', 'civil'], ['constitutional law', 'constitution'], 'Articles and schedules provide the public-law starting point; State and delegated instruments require separate review.'),
-  act('ICA1872', 'Indian Contract Act, 1872', 1872, '9 of 1872', code(2187), ['corporate', 'civil'], ['contract act', 'indian contract act']),
+  act('ICA1872', 'Indian Contract Act, 1872', 1872, '9 of 1872', 'https://indiacode.gov.in/server/api/core/bitstreams/e7571d39-11a7-4a2c-86e3-c515ae43e617/content', ['corporate', 'civil'], ['contract act', 'indian contract act'], 'A central India Code PDF is identified, but this copy does not print an as-on edition date. Resolve amendments and effective dates before indexing its text.'),
   act('CPC1908', 'Code of Civil Procedure, 1908', 1908, '5 of 1908', code(2191), ['civil', 'torts', 'administrative'], ['cpc', 'civil procedure code']),
   act('IEA1872', 'Indian Evidence Act, 1872', 1872, '1 of 1872', `${INDIA_CODE}/bitstream/123456789/6819/1/indian_evidence_act_1872.pdf`, ['evidence', 'civil', 'computer-crime'], ['evidence act'], 'Historical code: check repeal, savings and the date of the proceeding against the Bharatiya Sakshya Adhiniyam.'),
   act('BSA2023', 'Bharatiya Sakshya Adhiniyam, 2023', 2023, '47 of 2023', 'https://egazette.gov.in/WriteReadData/2023/250882.pdf', ['evidence', 'civil', 'cyber', 'computer-crime'], ['bsa', 'new evidence law', 'electronic evidence']),
@@ -65,7 +65,7 @@ export const PRACTICE_ACTS = Object.freeze([
   act('OSH2020', 'Occupational Safety, Health and Working Conditions Code, 2020', 2020, '37 of 2020', code(22041), ['labour', 'corporate'], ['osh code'], 'Check commencement notifications and State rules separately.'),
   act('PMLA2002', 'Prevention of Money-Laundering Act, 2002', 2002, '15 of 2003', code(2036), ['white-collar', 'corporate', 'banking'], ['pmla', 'money laundering act'], 'Check the scheduled offence, applicable amendment and procedural stage.'),
   act('PCA1988', 'Prevention of Corruption Act, 1988', 1988, '49 of 1988', code(1558), ['white-collar', 'corporate'], ['anti corruption act', 'corruption act'], 'Check the alleged conduct date against amendment and sanction requirements.'),
-  act('IT2000', 'Information Technology Act, 2000', 2000, '21 of 2000', code(1999), ['white-collar', 'corporate', 'cyber', 'cyber-security', 'ecommerce', 'social-media', 'computer-crime', 'data-protection'], ['it act', 'cyber law', 'computer crime law'], 'Check applicable rules, orders and current judicial treatment of each provision.'),
+  act('IT2000', 'Information Technology Act, 2000', 2000, '21 of 2000', 'https://indiacode.gov.in/server/api/core/bitstreams/770a7d02-48f2-4274-bab9-10d0f48ee264/content', ['white-collar', 'corporate', 'cyber', 'cyber-security', 'ecommerce', 'social-media', 'computer-crime', 'data-protection'], ['it act', 'cyber law', 'computer crime law'], 'The linked India Code edition is marked as on 27 June 2025. Check later amendments, applicable rules, orders and current judicial treatment before relying on it.'),
   act('DPDP2023', 'Digital Personal Data Protection Act, 2023', 2023, '22 of 2023', code(22037), ['cyber', 'data-protection', 'cyber-security', 'ecommerce', 'social-media'], ['dpdp', 'data protection act'], 'Provisions have phased commencement; do not infer commencement from enactment or the rules publication.'),
   act('TELECOM2023', 'Telecommunications Act, 2023', 2023, '44 of 2023', `${INDIA_CODE}/bitstream/123456789/20101/1/a2023-44.pdf`, ['cyber', 'telecom', 'cyber-security'], ['telecommunication act', 'telecom act'], 'Different sections commenced on different dates; subordinate telecom rules are separate instruments.'),
   act('ITINTERMEDIARY2021', 'Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021', 2021, null, 'https://www.meity.gov.in/static/uploads/2025/10/708f6a344c74249c2e1bbb6890342f80.pdf', ['cyber', 'social-media', 'ecommerce'], ['it rules 2021', 'intermediary guidelines', 'social media rules'], 'The linked consolidated text is marked updated 22 October 2025. G.S.R. 120(E) amended these rules with effect from 20 February 2026 and must be applied separately. Later second-amendment proposals are drafts until notified.', 'rules', 'IT2000'),
@@ -125,12 +125,16 @@ export const cataloguedActs = (store, { query = '', topic = '', includeForeign =
     const coverage = actId && entry.instrumentType !== 'standard'
       ? store.verifiedActCoverageAsOf(actId, asOf) : { provisions: 0, source: null };
     const verified = Boolean(coverage.provisions && isCitableOfficialSource(coverage.source?.source_url, coverage.source?.source_sha256));
+    const historical = actId && !verified && entry.instrumentType !== 'standard' ? store.lastBoundedReview(actId, asOf) : null;
     return [{
       ...entry,
-      status: verified ? 'indexed-as-of' : 'source-identified',
+      status: verified ? 'indexed-as-of' : historical?.provisions ? 'indexed-historical' : 'source-identified',
       indexedSections: verified ? coverage.provisions : 0,
       indexedSourceUrl: verified ? coverage.source.source_url : null,
       indexedSourceSha256: verified ? coverage.source.source_sha256 : null,
+      historicalIndexedSections: historical?.provisions ?? 0,
+      reviewedThrough: historical?.reviewedThrough ?? null,
+      historicalSourceUrl: historical?.source?.source_url ?? null,
       score: q ? exact ? 0 : prefix ? 1 : 2 : 3,
     }];
   });

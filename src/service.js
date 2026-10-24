@@ -61,6 +61,7 @@ export const getConstitutionProvision = (store, input, date = today()) => {
     heading: version.heading,
     context: JSON.parse(version.context || 'null'),
     asOf: date,
+    reviewedThrough: version.verified_through ?? null,
     inForceSince: version.valid_from,
     lastAmendedBy: version.amended_by_ref,
     text: version.text,
@@ -87,7 +88,16 @@ export const getActProvision = (store, actInput, sectionInput, date = today()) =
   const actTitle = act?.shortTitle || catalogued.title;
   const actId = store.findAct(act ? actRecord(act) : { shortTitle: catalogued.title, year: catalogued.year });
   const version = actId ? store.getProvisionAsOf({ actId, label, date }) : null;
-  if (!version) return { ok: false, status: 404, act: key, label, asOf: date, reason: actId ? 'not-indexed-as-of' : 'not-indexed', error: `${actTitle} has no ${catalogued?.instrumentType === 'rules' ? 'rule' : 'section'} ${label.slice(2)} indexed for that date in the library` };
+  if (!version) {
+    const prior = actId ? store.lastProvisionReview({ actId, label }) : null;
+    const outdated = prior?.verified_through < date;
+    return { ok: false, status: 404, act: key, label, asOf: date,
+      reason: outdated ? 'edition-not-verified-for-date' : actId ? 'not-indexed-as-of' : 'not-indexed',
+      ...(outdated ? { reviewedThrough: prior.verified_through, source: { url: prior.source_url, sha256: prior.source_sha256 } } : {}),
+      error: outdated
+        ? `${actTitle} section ${label.slice(2)} was last reviewed through ${prior.verified_through}; this library has not verified its text for ${date}.`
+        : `${actTitle} has no ${catalogued?.instrumentType === 'rules' ? 'rule' : 'section'} ${label.slice(2)} indexed for that date in the library` };
+  }
   if (!isCitableOfficialSource(version.source_url, version.source_sha256)) {
     return { ok: false, status: 404, act: key, label, asOf: date, reason: 'unverified-source', error: 'This provision has no verified official source in the library.' };
   }
@@ -104,6 +114,7 @@ export const getActProvision = (store, actInput, sectionInput, date = today()) =
     heading: version.heading,
     context: JSON.parse(version.context || 'null'),
     asOf: date,
+    reviewedThrough: version.verified_through ?? null,
     inForceSince: excluded ? null : version.valid_from,
     forceStatus: excluded ? 'not-verified-in-force' : pending.length ? 'commencement-caution' : 'in-force-in-library',
     gazette: version.gazette_ref,
@@ -126,7 +137,7 @@ export const searchCatalog = (store, { query = '', topic = '', includeForeign = 
     return {
       ok: true, asOf, topics: PRACTICE_TOPICS, items,
       foreignNotice: foreignMatch ? `${foreignMatch.title} is ${foreignMatch.jurisdiction} law and is excluded from Indian provision search.` : null,
-      note: 'An official source link identifies an instrument. Only indexed-as-of entries have provision text in this library. Acts, rules, directions and technical standards have different legal force; amendments, commencement and local variations still require review.',
+      note: 'An official source link identifies an instrument. Indexed-as-of entries have text for the requested date; indexed-historical entries have older reviewed text only. Acts, rules, directions and technical standards have different legal force; amendments, commencement and local variations still require review.',
     };
   } catch (error) {
     return { ok: false, status: 400, error: error.message };

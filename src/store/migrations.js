@@ -369,4 +369,11 @@ export const MIGRATIONS = Object.freeze([
   ALTER TABLE case_text ADD COLUMN parser_version INTEGER NOT NULL DEFAULT 1;
   ALTER TABLE sc_text_import ADD COLUMN parser_version INTEGER NOT NULL DEFAULT 1;
   `,
+
+  // 14: a consolidated edition proves its text only through its stated review date.
+  // NULL preserves the existing open-ended editions; a bounded snapshot is excluded
+  // from current-law lookup/search/coverage after this date, without claiming repeal.
+  `
+  ALTER TABLE provision_version ADD COLUMN verified_through TEXT;
+  `,
 ]);

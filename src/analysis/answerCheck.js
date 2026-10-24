@@ -36,6 +36,9 @@ const subSectionOf = (raw) => /\d[A-Z]?\s*\(\s*(\d{1,2}[A-Z]?)\s*\)/i.exec(Strin
 /** "[BNS s. 37(2)]" → "BNS s.37"; "[Art. 21]" / "[Article 21(1)]" → "Article 21"; unknown shapes → null. */
 export const normalizeTag = (raw) => {
   const text = String(raw || '').replace(/\s+/g, ' ').trim();
+  const it = /^(?:Information Technology Act,?\s*2000|IT Act|IT2000)\s*(?:s\.?|sec\.?|section)\s*(\d{1,3}[A-Z]?)/i.exec(text)
+    || /^(?:s\.?|sec\.?|section)\s*(\d{1,3}[A-Z]?)\s*(?:of\s+(?:the\s+)?)?(?:Information Technology Act,?\s*2000|IT Act|IT2000)\b/i.exec(text);
+  if (it) return `IT2000 s.${it[1].toUpperCase()}`;
   const section = /^(BNSS|BNS|BSA|IPC|CrPC|IEA)\s*(?:s\.?|sec\.?|section)\s*(\d{1,3}[A-Z]?)/i.exec(text)
     || /^(?:s\.?|sec\.?|section)\s*(\d{1,3}[A-Z]?)\s*(?:of\s+(?:the\s+)?)?(BNSS|BNS|BSA|IPC|CrPC|IEA)\b/i.exec(text);
   if (section) {
@@ -82,7 +85,7 @@ export const checkLegalAnswer = (answer, evidence) => {
   const seenTags = new Set();
   const citations = [];
   for (const [, raw] of String(answer || '').matchAll(/\[([^\]\n]{2,60})\]/g)) {
-    for (const part of raw.split(/\s*[;,]\s*(?=(?:BNSS|BNS|BSA|Art|Article|s\.|section)\b)/i)) {
+    for (const part of raw.split(/\s*[;,]\s*(?=(?:BNSS|BNS|BSA|IPC|CrPC|IEA|IT2000|IT Act|Information Technology Act|Art|Article|s\.|section)\b)/i)) {
       const tag = normalizeTag(part);
       if (!tag) continue;
       const item = byTag.get(tag);

@@ -1,6 +1,6 @@
 # Why Teach me can give a grounded but wrong legal answer
 
-Status: 19 October 2026. This is an engineering incident review of the security-researcher question reported by a user. It describes the observed failure, the current repair, and remaining risks. It is not a statement about the merits of that person's case.
+Status: updated 24 October 2026. This is an engineering incident review of the security-researcher question reported by a user. It describes the observed failure, the current repair, and remaining risks. It is not a statement about the merits of that person's case.
 
 ## The incident
 
@@ -46,19 +46,20 @@ These are architectural risks, not a claim that every Teach me answer has failed
 
 - Security-testing language maps to a cyber-law concept with IT Act sections 43 and 66 as the core provisions. A case against the researcher is classified as a fact scenario. “Defend myself” in that context no longer triggers physical private-defence law.
 - FIR-registration language now requires a more specific reporting intent; being named in an FIR is not treated as a request to register one.
-- When neither core IT Act provision has verified text, concept retrieval declines instead of answering from incidental BNSS or BSA text. The page states the exact gap and links the official IT Act listing.
+- Retrieval now requires **both** core IT Act provisions, with expected headings and official provenance, before answering a cyber-testing merits question. This gate runs before named-reference and search returns, so a named BNSS section cannot bypass it. The page states the gap and links the India Code portal.
+- IT Act citation tags are normalised to the same provision identity used by the answer checker and claim critic.
 - The DocVex no-text path emits a cyber-specific reply without calling a model. A regression test covers the user's failure pattern and a case “against me” phrased as an FIR.
+- A live POST to `/lawbuddy/teach` with an IT Act section 66 and BNSS section 173 mixed question returned `groundingStatus: "ungrounded"`, no sources, and `model: "none: declined without official text"` on 24 October 2026. The LawBuddy suite passed 158 tests.
 
-This repair prevents the original wrong-law answer. It does **not** mean Teach me can yet give a complete IT Act analysis: sections 43 and 66 remain source-identified, not provision-indexed. Import requires an official edition, raw document hash, section extraction, amendment and commencement review, and dated versions under the [library import gate](LEGAL_LIBRARY_ARCHITECTURE.md#import-gate-for-a-new-act-or-rule).
+This repair prevents the original wrong-law answer. A later indexing pass added IT Act sections 43 and 66 from an official edition marked **as on 27 June 2025**. Those sections are available for a suitable historical as-of date, but the edition is **not verified for October 2026**. Teach me therefore still declines the current cyber scenario. Extending coverage requires a newer official edition, raw document hash, section extraction, amendment and commencement review under the [library import gate](LEGAL_LIBRARY_ARCHITECTURE.md#import-gate-for-a-new-act-or-rule).
 
 ## Open failure paths to close next
 
-1. **Exact-reference bypass.** `createLawRetriever` returns as soon as *any* named reference resolves. A mixed question naming an absent IT Act section and an available BNSS section can therefore bypass the cyber concept's missing-core guard. The gate must run before every return path, including exact references and search.
-2. **One of two core provisions is enough.** The current cyber guard declines only when *neither* section 43 nor 66 is retrieved. If just one is imported, the answer needs an explicit partial-coverage status and must not imply that the other was reviewed.
-3. **Citation vocabulary is incomplete.** `normalizeTag` in `answerCheck.js` recognises the criminal codes and Constitution but not the full “Information Technology Act, 2000 s.43” tag. Indexing the IT Act without extending citation parsing would leave some IT Act claims unverified by this checker.
-4. **Untagged claims escape the critic.** `extractClaims` selects lines with recognised citation tags. A section cited once in a heading does not verify each subsequent bullet. Every material legal claim needs its own source association or a checker that maps claims to the enclosing source.
-5. **Applicability is not represented as structured data.** The concept map points to section numbers, but the pipeline has no typed record of each rule's actor, preconditions, exception, remedy, procedural posture and effective interval. This makes omitted qualifiers hard to detect deterministically.
-6. **Language and phrasing coverage remain limited.** The concept rules are English regular expressions. Hindi, Hinglish, typos and alternative descriptions of the same event need evaluated examples; keyword expansion alone risks more false matches.
+1. **Coverage is concept-specific, not a shared contract.** The new gate closes this cyber incident, but other concepts and mixed exact references can still return partial evidence. Build a typed `ready / partial / unavailable` result for every primary issue, date and jurisdiction before broadening claims of coverage.
+2. **Untagged claims escape the critic.** `extractClaims` selects lines with recognised citation tags. A section cited once in a heading does not verify each subsequent bullet. Every material legal claim needs its own source association or a checker that maps claims to the enclosing source.
+3. **Applicability is not represented as structured data.** The concept map points to section numbers, but the pipeline has no typed record of each rule's actor, preconditions, exception, remedy, procedural posture and effective interval. This makes omitted qualifiers hard to detect deterministically.
+4. **Language and phrasing coverage remain limited.** The concept rules are English regular expressions. Hindi, Hinglish, typos and alternative descriptions of the same event need evaluated examples; keyword expansion alone risks more false matches.
+5. **Post-stream review remains advisory.** The second model checks cited claims after answer tokens have been emitted. A prepublication gate is needed before a high-stakes answer can be called checked.
 
 ## Prevention and acceptance criteria
 

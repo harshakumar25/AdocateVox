@@ -36,6 +36,7 @@ import { importLocalDocument } from './sources/manualImport.js';
 import { parseSankalanTable } from './parse/sankalanTable.js';
 import { ingestConstitution } from './ingest/constitution.js';
 import { ingestCentralAct } from './ingest/act.js';
+import { ingestReviewedIndiaCodeEdition } from './ingest/indiaCodeEdition.js';
 import { buildCorrespondence } from './compare/buildCorrespondence.js';
 import { getConstitutionProvision, lookupSection, searchCatalog, searchLaw, toConstitutionLabel } from './service.js';
 import { createWatcher } from './watch/watcher.js';
@@ -58,6 +59,7 @@ const USAGE = `Usage:
   npm run legal -- import-table <file> <url>
   npm run legal -- lookup <act> <section>     acts: BNS IPC BNSS CrPC BSA IEA
   npm run legal -- ingest-constitution <url>
+  npm run legal -- ingest-it-act-2025-core
   npm run legal -- article <21 | 21A | Preamble | Sch.7> [YYYY-MM-DD]
   npm run legal -- catalog [words...]
   npm run legal -- search [--act ACT_ID] [--as-of YYYY-MM-DD] <words...>
@@ -244,6 +246,9 @@ const run = async ([command, ...args]) => {
     }
     if (command === 'ingest-constitution' && args.length === 1) {
       return await ingestConstitution({ store, url: args[0] });
+    }
+    if (command === 'ingest-it-act-2025-core' && args.length === 0) {
+      return await ingestReviewedIndiaCodeEdition({ store });
     }
     if (command === 'article' && (args.length === 1 || args.length === 2)) {
       return getConstitutionProvision(store, ...args);
