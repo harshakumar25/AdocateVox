@@ -195,13 +195,14 @@ export const handleLawBuddyApiRoute = async (req, res, {
       groq: { configured: Boolean(reportOptions.GROQ_API_KEY || process.env.GROQ_API_KEY) },
     } };
   } else if (isReport) {
-    const body = await readBody(req, 16 * 1024);
+    const body = await readBody(req, 2 * 1024 * 1024);
     if (!body) result = { ok: false, status: 413, error: 'Report request is too large.' };
     else {
       let input;
       try { input = JSON.parse(body.toString('utf8')); } catch { input = null; }
       result = input && typeof input === 'object' ? await createLegalReport({ store, input,
         generate: (args) => reportGenerate({ ...args, options: reportOptions }),
+        options: { ...reportOptions, checkpointDir: reportOptions.REPORT_CHECKPOINT_DIR || undefined },
       }) : { ok: false, status: 400, error: 'Send a JSON report request.' };
     }
   } else if (isUpload) {
@@ -270,6 +271,7 @@ export const handleLawBuddyApiRoute = async (req, res, {
   }
 
   const { status, ...body } = result;
-  sendJson(res, status ?? (body.ok ? 200 : 404), body, req);
+  const httpStatus = Number.isInteger(status) ? status : (body.ok ? 200 : 404);
+  sendJson(res, httpStatus, typeof status === 'string' ? { ...body, status } : body, req);
   return true;
 };
