@@ -41,6 +41,51 @@ test('lay words map to legal concepts and to the provisions on each side of the 
   }
 });
 
+test('an accused security researcher is routed to cyber law, not FIR filing or physical self-defence', async () => {
+  const question = 'I am an individual cyber security researcher. I did penetration testing on a website for white hacking practice. The owner of the website filed a case against me. My intention was good. How can I defend myself?';
+  const analysis = analyseQuestion(question);
+  assert.equal(analysis.kind, 'scenario');
+  assert.deepEqual(analysis.concepts.map((concept) => concept.id), ['unauthorised-security-testing']);
+  assert.deepEqual(analyseQuestion('I did penetration testing; the owner filed an FIR against me. How can I defend myself?').concepts.map((concept) => concept.id),
+    ['unauthorised-security-testing'], 'being named in an FIR is not a request to register one');
+  assert.deepEqual(analysis.provisions.map((provision) => provision.label).sort(), ['s.43', 's.66']);
+  const store = bnsLibrary();
+  try {
+    const retrieve = createLawRetriever({ loader: { get: async () => store }, asOf: '2026-10-19' });
+    const evidence = await retrieve({ text: question });
+    assert.equal(evidence.length, 0, 'unrelated statute text must not substitute for the missing IT Act');
+    assert.match(evidence.analysis.warnings[0], /section 43 and section 66.*not indexed/i);
+  } finally {
+    store.close();
+  }
+});
+
+test('cyber merits need both IT Act sections even when the question names an available procedural section', async () => {
+  const store = openLegalStore(':memory:');
+  const add = (shortTitle, year, label, heading, text) => {
+    const actId = store.upsertAct({ shortTitle, year });
+    const provisionId = store.upsertProvision({ actId, label, heading });
+    store.addProvisionVersion({ provisionId, text, validFrom: '2024-07-01',
+      sourceUrl: 'https://www.indiacode.nic.in/official-test.pdf', sourceSha256: 'test-source' });
+  };
+  try {
+    add('Bharatiya Nagarik Suraksha Sanhita, 2023', 2023, 's.173', 'Information in cognizable cases', 'Information relating to the commission of a cognizable offence.');
+    const retrieve = createLawRetriever({ loader: { get: async () => store }, asOf: '2026-10-19' });
+    const question = 'I performed penetration testing without permission; the owner filed a case against me. Explain IT Act section 66 and BNSS section 173 in my case.';
+    const absent = await retrieve({ text: question });
+    assert.equal(absent.length, 0, 'BNSS must not make a partial cyber answer look grounded');
+    add('Information Technology Act, 2000', 2000, 's.43', 'Penalty and compensation for damage to computer, computer system, etc.', 'If any person without permission accesses a computer.');
+    const partial = await retrieve({ text: question });
+    assert.equal(partial.length, 0, 'section 43 alone cannot support the section 66 mental-element analysis');
+    assert.match(partial.analysis.warnings[0], /section 66.*not indexed/i);
+    assert.deepEqual(partial.analysis.coverage.missing, [{ act: 'IT2000', label: 's.66' }]);
+    add('Information Technology Act, 2000', 2000, 's.66', 'Computer related offences', 'If any person, dishonestly or fraudulently, does any act referred to in section 43.');
+    const complete = await retrieve({ text: question });
+    assert.deepEqual(complete.filter((item) => item.kind === 'statute').map((item) => `${item.act}:${item.label}`).sort(),
+      ['BNSS:s.173', 'IT2000:s.43', 'IT2000:s.66']);
+  } finally { store.close(); }
+});
+
 const S101 = [
   'Except in the cases hereinafter excepted, culpable homicide is murder,––',
   '(a) if the act by which the death is caused is done with the intention of causing death; or',
@@ -132,6 +177,7 @@ test('citation tags are normalised, and an answer\'s citations and quotations ar
   assert.equal(normalizeTag('BNS s. 37(2)'), 'BNS s.37');
   assert.equal(normalizeTag('section 38 of the BNS'), 'BNS s.38');
   assert.equal(normalizeTag('Art. 21(1)'), 'Article 21');
+  assert.equal(normalizeTag('Information Technology Act, 2000 s.43'), 'IT2000 s.43');
   assert.equal(normalizeTag('emphasis supplied'), null);
 
   const evidence = [
@@ -162,6 +208,14 @@ test('citation tags are normalised, and an answer\'s citations and quotations ar
   assert.equal(fragments.quotes[0].ok, true, 'a quotation with an ellipsis is checked fragment by fragment');
   const shuffled = checkLegalAnswer('“more harm than it is necessary to inflict … (2) The right of private defence” [BNS s.37].', evidence);
   assert.equal(shuffled.quotes[0].exact, false, 'fragments out of order are not an exact quotation');
+});
+
+test('IT Act citations use the same identity in answer checking and claim critique', () => {
+  const evidence = [{ kind: 'statute', act: 'IT2000', label: 's.66', title: 'IT Act s.66',
+    content: 'If any person, dishonestly or fraudulently, does any act referred to in section 43.' }];
+  const answer = 'Section 66 turns on a dishonest or fraudulent act referred to in section 43 [Information Technology Act, 2000 s.66].';
+  assert.deepEqual(checkLegalAnswer(answer, evidence).citations.map((item) => [item.tag, item.ok]), [['IT2000 s.66', true]]);
+  assert.deepEqual(extractClaims(answer).map((claim) => claim.tags), [['IT2000 s.66']]);
 });
 
 // ------------------------------------------------------------------ the Gazette parser

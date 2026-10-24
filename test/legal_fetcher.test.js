@@ -12,6 +12,8 @@ import { createPoliteFetcher } from '../src/sources/fetcher.js';
 test('findSourceForUrl only accepts registered hosts and their subdomains over http(s)', () => {
   assert.equal(findSourceForUrl('https://main.sci.gov.in/judgments').id, 'sci');
   assert.equal(findSourceForUrl('https://www.sci.gov.in/').id, 'sci');
+  assert.equal(findSourceForUrl('https://indiacode.gov.in/').id, 'india-code');
+  assert.equal(findSourceForUrl('https://www.indiacode.nic.in/').id, 'india-code');
   assert.equal(findSourceForUrl('https://lddashboard.legislative.gov.in/coi.pdf').id, 'legislative');
   assert.equal(findSourceForUrl('https://notsci.gov.in/'), null);
   assert.equal(findSourceForUrl('https://sci.gov.in.evil.example/'), null);

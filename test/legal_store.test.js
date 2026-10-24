@@ -4,6 +4,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { openLegalStore, toFtsQuery } from '../src/store/db.js';
+import { cataloguedActs } from '../src/ingest/libraryCatalog.js';
+import { getActProvision } from '../src/service.js';
 
 const seedConstitution = (store) => {
   const actId = store.upsertAct({ shortTitle: 'Constitution of India', year: 1950, ministry: 'Law and Justice' });
@@ -104,6 +106,41 @@ test('provision versions are point-in-time: an amendment closes the old text and
   } finally {
     store.close();
   }
+});
+
+test('a dated official edition disappears from current lookup, search and catalogue coverage after its review date', () => {
+  const store = openLegalStore(':memory:');
+  try {
+    const actId = store.upsertAct({ shortTitle: 'Information Technology Act, 2000', year: 2000 });
+    const provisionId = store.upsertProvision({ actId, label: 's.66', heading: 'Computer related offences' });
+    store.addProvisionVersion({ provisionId, text: 'A dishonest computer act is punishable.', validFrom: '2009-10-27',
+      verifiedThrough: '2025-06-27', sourceUrl: 'https://indiacode.gov.in/server/api/core/bitstreams/test/content', sourceSha256: 'pdf-hash' });
+    assert.ok(store.getProvisionAsOf({ actId, label: 's.66', date: '2025-06-27' }));
+    assert.equal(store.verifiedActCoverageAsOf(actId, '2025-06-27').provisions, 1);
+    assert.equal(store.searchProvisions('dishonest', { asOf: '2025-06-27', officialOnly: true }).length, 1);
+    assert.equal(store.getProvisionAsOf({ actId, label: 's.66', date: '2025-06-28' }), null);
+    assert.equal(store.verifiedActCoverageAsOf(actId, '2025-06-28').provisions, 0);
+    assert.equal(store.searchProvisions('dishonest', { asOf: '2025-06-28', officialOnly: true }).length, 0);
+    const catalog = cataloguedActs(store, { query: 'IT Act', asOf: '2025-06-28' })[0];
+    assert.equal(catalog.status, 'indexed-historical');
+    assert.equal(catalog.historicalIndexedSections, 1);
+    assert.equal(catalog.reviewedThrough, '2025-06-27');
+    assert.equal(getActProvision(store, 'IT2000', '66', '2025-06-28').reason, 'edition-not-verified-for-date');
+  } finally { store.close(); }
+});
+
+test('a newer reviewed edition with unchanged wording retains both source snapshots', () => {
+  const store = openLegalStore(':memory:');
+  try {
+    const actId = store.upsertAct({ shortTitle: 'Information Technology Act, 2000', year: 2000 });
+    const provisionId = store.upsertProvision({ actId, label: 's.66' });
+    const base = { provisionId, text: 'A dishonest computer act is punishable.',
+      sourceUrl: 'https://indiacode.gov.in/server/api/core/bitstreams/test/content' };
+    store.addProvisionVersion({ ...base, validFrom: '2009-10-27', verifiedThrough: '2025-06-27', sourceSha256: 'old-edition' });
+    store.addProvisionVersion({ ...base, validFrom: '2025-06-28', verifiedThrough: '2026-10-24', sourceSha256: 'new-edition' });
+    assert.equal(store.getProvisionAsOf({ actId, label: 's.66', date: '2025-06-27' }).source_sha256, 'old-edition');
+    assert.equal(store.getProvisionAsOf({ actId, label: 's.66', date: '2026-10-24' }).source_sha256, 'new-edition');
+  } finally { store.close(); }
 });
 
 test('re-ingesting unchanged text is a no-op, and out-of-order or invalid versions are rejected', () => {

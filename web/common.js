@@ -39,6 +39,12 @@ export const humanLabel = (label) => {
 };
 
 const DATE_FORMAT = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const INDIA_TODAY = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
+
+export const indiaToday = (instant = new Date()) => {
+  const fields = Object.fromEntries(INDIA_TODAY.formatToParts(instant).filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
+  return `${fields.year}-${fields.month}-${fields.day}`;
+};
 
 /** "1950-01-26" → "26 Jan 1950". */
 export const formatDate = (iso) => {

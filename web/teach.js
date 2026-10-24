@@ -274,12 +274,21 @@ const correspondenceCard = (source, lookup) =>
     source.url ? el('footer', { className: 'provenance' }, [document.createTextNode('Source: '), safeLink(source.url, hostOf(source.url))]) : null,
   ]);
 
-const renderEvidence = (sources, id) => {
+const renderEvidence = (sources, id, analysis = null) => {
   if (!sources.length) {
-    evidence.replaceChildren(el('p', {
-      className: 'empty',
-      text: 'No official text matched this question, so LawBuddy will not answer it from memory. Try naming a provision, such as “Article 21”.',
-    }));
+    const cyberGap = (analysis?.concepts || []).some((concept) => concept.id === 'unauthorised-security-testing');
+    const missing = analysis?.coverage?.missing?.filter((item) => item.act === 'IT2000') || [{ label: 's.43' }, { label: 's.66' }];
+    const missingText = missing.length === 1 ? `section ${missing[0].label.slice(2)}` : `sections ${missing.map((item) => item.label.slice(2)).join(' and ')}`;
+    const reviewed = missing.filter((item) => item.reviewedThrough);
+    const cyberMessage = reviewed.length
+      ? `This is a cyber-law question. IT Act ${missingText} ${missing.length === 1 ? 'is' : 'are'} needed, but ${reviewed.map((item) => `section ${item.label.slice(2)} was reviewed only through ${item.reviewedThrough}`).join('; ')}. LawBuddy cannot assess the case for the requested date from older text or FIR provisions alone.`
+      : `This is a cyber-law question. The verified text of IT Act ${missingText} is not indexed here yet, so LawBuddy cannot assess your case from the FIR provisions alone.`;
+    evidence.replaceChildren(
+      el('p', { className: 'empty', text: cyberGap
+        ? cyberMessage
+        : 'No official text matched this question, so LawBuddy will not answer it from memory. Try naming a provision, such as “Article 21”.' }),
+      ...(cyberGap ? [el('p', {}, [document.createTextNode('Read the '), safeLink('https://indiacode.gov.in/', 'India Code portal'), document.createTextNode(' and speak with an Indian cybercrime lawyer if a complaint or FIR has been filed.')])] : []),
+    );
     return;
   }
 
@@ -334,6 +343,8 @@ const showReading = (analysis) => {
   reading.replaceChildren(
     el('strong', { text: 'How LawBuddy read your question: ' }),
     document.createTextNode(`${KIND_TEXT[analysis.kind] || KIND_TEXT.general}.${concepts.length ? ` Legal concepts: ${concepts.join('; ')}.` : ''}`),
+    ...(analysis.warnings || []).filter((warning) => /needed to answer this question/.test(warning))
+      .map((warning) => el('span', { className: 'reading-warning', text: ` ${warning}` })),
   );
   reading.hidden = false;
 };
@@ -486,7 +497,7 @@ const teach = async (text) => {
         chatterboxOn = Boolean(data.chatterbox?.enabled);
         showGrounding(data);
         showReading(data.analysis);
-        renderEvidence(data.sources || [], id);
+        renderEvidence(data.sources || [], id, data.analysis);
         // The judgments shown are for the first Article the answer is grounded in.
         // Judgments for each provision the answer relies on: Articles directly; sections of the new codes
         // also through the IPC/CrPC/Evidence Act section they replaced. The most decisive role comes first.

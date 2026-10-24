@@ -1,11 +1,14 @@
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getActProvision, getConstitutionProvision, lookupSection, searchLaw } from './service.js';
+import { getActProvision, getConstitutionProvision, lookupSection, searchCatalog, searchLaw } from './service.js';
 import { checkUploadedCopy } from './compare/checkCopy.js';
 import { casesForProvision, citingJudgments } from './cases/service.js';
 import { prepareCaseBrief } from './cases/brief.js';
+import { verifyCaseCitation } from './cases/citationVerify.js';
 import { createPoliteFetcher } from './sources/fetcher.js';
+import { createLegalReport } from './reports/report.js';
+import { generateReportText } from './reports/provider.js';
 
 const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
 
@@ -72,6 +75,7 @@ const handleCopyUpload = async (req, store, parsedUrl, checkUpload) => {
       body,
       act: parsedUrl.searchParams.get('act') || 'auto',
       copyDate: parsedUrl.searchParams.get('date') || null,
+      cloudClaims: parsedUrl.searchParams.get('cloudClaims') === '1',
     }));
   } catch {
     // Worker output can carry file paths; the browser only needs to know the file could not be read.
@@ -108,6 +112,14 @@ export const getLawBuddyFiles = () => {
     '/lawbuddy/': [path.join(LAWBUDDY_WEB_DIR, 'index.html'), 'text/html; charset=utf-8'],
     '/lawbuddy/teach': [path.join(LAWBUDDY_WEB_DIR, 'teach.html'), 'text/html; charset=utf-8'],
     '/lawbuddy/check': [path.join(LAWBUDDY_WEB_DIR, 'check.html'), 'text/html; charset=utf-8'],
+    '/lawbuddy/practice': [path.join(LAWBUDDY_WEB_DIR, 'practice.html'), 'text/html; charset=utf-8'],
+    '/lawbuddy/reports': [path.join(LAWBUDDY_WEB_DIR, 'reports.html'), 'text/html; charset=utf-8'],
+    '/lawbuddy/assets/reports.js': [path.join(LAWBUDDY_WEB_DIR, 'reports.js'), 'text/javascript; charset=utf-8'],
+    '/lawbuddy/assets/reportDocx.js': [path.join(LAWBUDDY_WEB_DIR, 'reportDocx.js'), 'text/javascript; charset=utf-8'],
+    '/lawbuddy/assets/practice.js': [path.join(LAWBUDDY_WEB_DIR, 'practice.js'), 'text/javascript; charset=utf-8'],
+    '/lawbuddy/assets/practiceModel.js': [path.join(LAWBUDDY_WEB_DIR, 'practiceModel.js'), 'text/javascript; charset=utf-8'],
+    '/lawbuddy/assets/practiceDocx.js': [path.join(LAWBUDDY_WEB_DIR, 'practiceDocx.js'), 'text/javascript; charset=utf-8'],
+    '/lawbuddy/assets/practiceStore.js': [path.join(LAWBUDDY_WEB_DIR, 'practiceStore.js'), 'text/javascript; charset=utf-8'],
     '/lawbuddy/assets/check.js': [path.join(LAWBUDDY_WEB_DIR, 'check.js'), 'text/javascript; charset=utf-8'],
     '/lawbuddy/assets/cases.js': [path.join(LAWBUDDY_WEB_DIR, 'cases.js'), 'text/javascript; charset=utf-8'],
     '/lawbuddy/assets/lawbuddy.css': [path.join(LAWBUDDY_WEB_DIR, 'lawbuddy.css'), 'text/css; charset=utf-8'],
@@ -152,10 +164,13 @@ export const handleLawBuddyApiRoute = async (req, res, {
   libraryMissingMessage = 'LawBuddy legal library is not installed. Import and ingest it first, e.g. npm run legal -- ingest-constitution <url>.',
   checkUpload = checkUploadedCopy,
   prepareBrief = prepareCaseBrief,
+  reportGenerate = generateReportText,
+  reportOptions = {},
 }) => {
   const isUpload = req.method === 'POST' && pathname === '/lawbuddy/api/copy-check';
+  const isReport = req.method === 'POST' && pathname === '/lawbuddy/api/reports';
   const briefMatch = req.method === 'POST' ? /^\/lawbuddy\/api\/cases\/(\d+)\/brief$/.exec(pathname) : null;
-  if ((req.method !== 'GET' && !isUpload && !briefMatch) || !pathname.startsWith('/lawbuddy/api/')) {
+  if ((req.method !== 'GET' && !isUpload && !isReport && !briefMatch) || !pathname.startsWith('/lawbuddy/api/')) {
     return false;
   }
 
@@ -173,7 +188,23 @@ export const handleLawBuddyApiRoute = async (req, res, {
   }
 
   let result = null;
-  if (isUpload) {
+  if (pathname === '/lawbuddy/api/reports/providers') {
+    result = { ok: true, providers: {
+      ollama: { configured: true },
+      grok: { configured: Boolean(reportOptions.XAI_API_KEY || process.env.XAI_API_KEY) },
+      groq: { configured: Boolean(reportOptions.GROQ_API_KEY || process.env.GROQ_API_KEY) },
+    } };
+  } else if (isReport) {
+    const body = await readBody(req, 16 * 1024);
+    if (!body) result = { ok: false, status: 413, error: 'Report request is too large.' };
+    else {
+      let input;
+      try { input = JSON.parse(body.toString('utf8')); } catch { input = null; }
+      result = input && typeof input === 'object' ? await createLegalReport({ store, input,
+        generate: (args) => reportGenerate({ ...args, options: reportOptions }),
+      }) : { ok: false, status: 400, error: 'Send a JSON report request.' };
+    }
+  } else if (isUpload) {
     result = await handleCopyUpload(req, store, parsedUrl, checkUpload);
   } else if (briefMatch) {
     req.resume();
@@ -184,7 +215,12 @@ export const handleLawBuddyApiRoute = async (req, res, {
   } else if (pathname === '/lawbuddy/api/cases') {
     // Supreme Court judgments on a provision, ranked by precedent points with their reasons.
     const limit = Math.min(12, Math.max(1, Number(parsedUrl.searchParams.get('limit')) || 6));
-    result = casesForProvision(store, { provision: parsedUrl.searchParams.get('provision'), limit });
+    result = casesForProvision(store, {
+      provision: parsedUrl.searchParams.get('provision'), limit,
+      decidedBy: parsedUrl.searchParams.get('decidedBy') || null,
+    });
+  } else if (pathname === '/lawbuddy/api/citation') {
+    result = verifyCaseCitation(store, parsedUrl.searchParams.get('citation'));
   } else if (pathname.startsWith('/lawbuddy/api/article/')) {
     let label;
     try {
@@ -194,8 +230,8 @@ export const handleLawBuddyApiRoute = async (req, res, {
       return true;
     }
     result = getConstitutionProvision(store, label, parsedUrl.searchParams.get('asOf') || undefined);
-  } else if (/^\/lawbuddy\/api\/section\/[A-Za-z]{2,5}\/[^/]+$/.test(pathname)) {
-    // One section of a Central Act (BNS, BNSS, BSA) from its official Gazette text.
+  } else if (/^\/lawbuddy\/api\/section\/[A-Za-z][A-Za-z0-9]{1,19}\/[^/]+$/.test(pathname)) {
+    // One dated, official-source section or rule from an indexed instrument.
     const [, , , , act, section] = pathname.split('/');
     let label;
     try {
@@ -206,7 +242,15 @@ export const handleLawBuddyApiRoute = async (req, res, {
     }
     result = getActProvision(store, act, label, parsedUrl.searchParams.get('asOf') || undefined);
   } else if (pathname === '/lawbuddy/api/search') {
-    result = searchLaw(store, parsedUrl.searchParams.get('q'));
+    result = searchLaw(store, parsedUrl.searchParams.get('q'), {
+      act: parsedUrl.searchParams.get('act'), asOf: parsedUrl.searchParams.get('asOf') || undefined,
+    });
+  } else if (pathname === '/lawbuddy/api/catalog') {
+    result = searchCatalog(store, {
+      query: parsedUrl.searchParams.get('q') || '', topic: parsedUrl.searchParams.get('topic') || '',
+      includeForeign: parsedUrl.searchParams.get('includeForeign') === '1',
+      asOf: parsedUrl.searchParams.get('asOf') || undefined,
+    });
   } else if (pathname === '/lawbuddy/api/lookup') {
     result = lookupSection(store, parsedUrl.searchParams.get('act'), parsedUrl.searchParams.get('section'));
   } else if (pathname === '/lawbuddy/api/sync') {

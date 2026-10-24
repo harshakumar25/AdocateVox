@@ -114,6 +114,13 @@ const CODE_NAMES = Object.freeze({
   BNS: 'Bharatiya Nyaya Sanhita, 2023', BNSS: 'Bharatiya Nagarik Suraksha Sanhita, 2023', BSA: 'Bharatiya Sakshya Adhiniyam, 2023',
   IPC: 'Indian Penal Code, 1860', CrPC: 'Code of Criminal Procedure, 1973', IEA: 'Indian Evidence Act, 1872',
 });
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const validDate = (date) => ISO_DATE.test(date)
+  && Number.isFinite(Date.parse(`${date}T00:00:00Z`))
+  && new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
+const decidedByDate = (rows, date) => date
+  ? rows.filter((row) => row.decided_on && row.decided_on <= date)
+  : rows;
 
 /**
  * Supreme Court judgments on a section of a criminal code. The new codes are recent, so most of what the
@@ -121,14 +128,14 @@ const CODE_NAMES = Object.freeze({
  * are found through the correspondence (LawBuddy's alignment of the two official texts, which says whether
  * the wording was carried forward unchanged or reworded), and each card names the section the Court applied.
  */
-const casesForSection = (store, { act, label, limit }) => {
+const casesForSection = (store, { act, label, limit, decidedBy }) => {
   const display = `${act} ${label}`;
   const { cases, earliest, latest } = store.caseStats();
-  const base = { ok: true, provision: display, act, label, heading: null, library: { cases, earliest, latest } };
+  const base = { ok: true, provision: display, act, label, heading: null, decidedBy, treatmentScope: 'current-index', library: { cases, earliest, latest } };
 
   const best = new Map();
   const consider = (rows, cited, note, predecessor = null) => {
-    for (const ranked of rankCases(rows, cited)) {
+    for (const ranked of rankCases(decidedByDate(rows, decidedBy), cited)) {
       const known = best.get(ranked.row.id);
       if (!known || known.points < ranked.points) best.set(ranked.row.id, { ...ranked, via: predecessor ? cited : null, viaNote: note });
     }
@@ -161,9 +168,10 @@ const casesForSection = (store, { act, label, limit }) => {
   };
 };
 
-export const casesForProvision = (store, { provision, limit = 6 }) => {
+export const casesForProvision = (store, { provision, limit = 6, decidedBy = null }) => {
+  if (decidedBy && !validDate(decidedBy)) return { ok: false, status: 400, error: 'decidedBy must be a real date like 2026-10-18.' };
   const section = SECTION_REF.exec(String(provision || ''));
-  if (section) return casesForSection(store, { act: ACT_CASE[section[1].toLowerCase()], label: `s.${section[2].toUpperCase()}`, limit });
+  if (section) return casesForSection(store, { act: ACT_CASE[section[1].toLowerCase()], label: `s.${section[2].toUpperCase()}`, limit, decidedBy });
   const label = toConstitutionLabel(provision);
   if (!label?.startsWith('Art.')) {
     return { ok: false, status: 400, error: 'Name an Article of the Constitution ("21", "Art.21") or a section ("BNS s.310", "IPC 302").' };
@@ -180,13 +188,15 @@ export const casesForProvision = (store, { provision, limit = 6 }) => {
     ok: true,
     provision: label,
     heading: self.heading,
+    decidedBy,
+    treatmentScope: 'current-index',
     library: {
       cases, earliest, latest,
       textIndex: { judgments: text.judgments, earliest: text.earliest, latest: text.latest, citations: text.edges },
     },
   };
 
-  const direct = rankCases(store.casesForProvision({ label }), label);
+  const direct = rankCases(decidedByDate(store.casesForProvision({ label }), decidedBy), label);
   if (direct.length) {
     return {
       ...base,
@@ -197,7 +207,7 @@ export const casesForProvision = (store, { provision, limit = 6 }) => {
     };
   }
 
-  const discussed = rankCases(store.casesMentioning({ label, minMentions: MIN_TEXT_MENTIONS }), label);
+  const discussed = rankCases(decidedByDate(store.casesMentioning({ label, minMentions: MIN_TEXT_MENTIONS }), decidedBy), label);
   if (discussed.length) {
     return {
       ...base,
@@ -225,7 +235,7 @@ export const casesForProvision = (store, { provision, limit = 6 }) => {
 
   const best = new Map();
   for (const related of relatedLabels) {
-    for (const ranked of rankCases(store.casesForProvision({ label: related }), related)) {
+    for (const ranked of rankCases(decidedByDate(store.casesForProvision({ label: related }), decidedBy), related)) {
       const candidate = { ...ranked, via: related, relatedness: relatedness.get(related) };
       const known = best.get(ranked.row.id);
       if (!known || known.relatedness < candidate.relatedness

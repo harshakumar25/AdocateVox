@@ -15,6 +15,8 @@
 import fs from 'node:fs';
 import { config } from '../config.js';
 import { CENTRAL_ACTS, actRecord } from '../ingest/act.js';
+import { PRACTICE_ACTS } from '../ingest/libraryCatalog.js';
+import { isCitableOfficialSource } from '../sources/registry.js';
 import { analyseQuestion, answerDirection, roleNote } from '../analysis/questionAnalysis.js';
 
 const CONSTITUTION = Object.freeze({ shortTitle: 'Constitution of India', year: 1950 });
@@ -37,6 +39,23 @@ const ACT_CODES = Object.freeze({
 const ACT_NAMES = String.raw`IPC|BNSS|BNS|Cr\.?\s?P\.?\s?C\.?|BSA|IEA|Indian Penal Code|Bharatiya Nyaya Sanhita|Bharatiya Nagarik Suraksha Sanhita|Bharatiya Sakshya Adhiniyam|Code of Criminal Procedure|(?:Indian\s+)?Evidence Act`;
 const toActCode = (name) => ACT_CODES[name.toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').replace(/^cr ?p ?c$/, 'crpc')] ?? null;
 
+const escapeRegex = (value) => value.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
+const catalogueReferences = PRACTICE_ACTS
+  .filter((entry) => entry.jurisdiction === 'IN' && entry.instrumentType !== 'standard'
+    && !['COI', 'IEA1872', 'BNS2023', 'BNSS2023', 'BSA2023'].includes(entry.id))
+  .flatMap((entry) => [entry.title, ...entry.aliases.filter((alias) => /\b(?:act|code|rules|directions|sanhita|adhiniyam)\b/i.test(alias) || /^(?:bns|bnss|bsa|dpdp|pmla|cpc|ibc)$/i.test(alias))]
+    .map((name) => {
+      const pattern = escapeRegex(name);
+      const unit = entry.instrumentType === 'rules' ? String.raw`(?:rules?|r\.)` : String.raw`(?:sections?|sec\.?|s\.)`;
+      const number = String.raw`(\d{1,3}[A-Z]{0,2})`;
+      const subsection = String.raw`((?:\s*\(\s*\w{1,4}\s*\))*)`;
+      return {
+        entry,
+        after: new RegExp(String.raw`\b` + unit + String.raw`\s*` + number + subsection + String.raw`\s*(?:of\s+(?:the\s+)?)?` + pattern + String.raw`\b`, 'gi'),
+        before: new RegExp(String.raw`\b` + pattern + String.raw`\s+` + unit + String.raw`\s*` + number + subsection, 'gi'),
+      };
+    }));
+
 export const LEGAL_EVIDENCE_KINDS = Object.freeze(['statute', 'statute-absence', 'correspondence']);
 
 /**
@@ -48,9 +67,12 @@ export const detectLegalReferences = (text) => {
   const constitution = [];
   const sections = [];
   const addArticle = (label) => !constitution.includes(label) && constitution.push(label);
-  const addSection = (act, number) => {
-    const label = `s.${number.toUpperCase()}`;
-    if (act && !sections.some((s) => s.act === act && s.label === label)) sections.push({ act, label });
+  const addSection = (act, number, subsection = '', prefix = 's.') => {
+    const label = `${prefix}${number.toUpperCase()}`;
+    const normalizedSubsection = subsection.replace(/\s+/g, '').toUpperCase();
+    if (act && !sections.some((s) => s.act === act && s.label === label && (s.subsection || '') === normalizedSubsection)) {
+      sections.push({ act, label, ...(normalizedSubsection ? { subsection: normalizedSubsection } : {}) });
+    }
   };
 
   // "Article 21", "Art. 21A(1)", "Articles 14, 19 and 21"
@@ -74,15 +96,21 @@ export const detectLegalReferences = (text) => {
   }
 
   // "Section 302 IPC", "s. 103 of the Bharatiya Nyaya Sanhita"
-  for (const [, number, act] of value.matchAll(new RegExp(String.raw`\b(?:sections?|sec\.?|s\.)\s*(\d{1,3}[A-Z]{0,2})(?:\s*\(\s*\w{1,4}\s*\))*\s*(?:of\s+(?:the\s+)?)?(${ACT_NAMES})`, 'gi'))) {
-    addSection(toActCode(act), number);
+  for (const [, number, subsection, act] of value.matchAll(new RegExp(String.raw`\b(?:sections?|sec\.?|s\.)\s*(\d{1,3}[A-Z]{0,2})((?:\s*\(\s*\w{1,4}\s*\))*)\s*(?:of\s+(?:the\s+)?)?(${ACT_NAMES})`, 'gi'))) {
+    addSection(toActCode(act), number, subsection);
   }
   // "IPC 302", "BNS s. 103"
-  for (const [, act, number] of value.matchAll(new RegExp(String.raw`\b(IPC|BNSS|BNS|CrPC|BSA|IEA)\s*(?:sections?|sec\.?|s\.)?\s*(\d{1,3}[A-Z]{0,2})\b`, 'gi'))) {
-    addSection(toActCode(act), number);
+  for (const [, act, number, subsection] of value.matchAll(new RegExp(String.raw`\b(IPC|BNSS|BNS|CrPC|BSA|IEA)\s*(?:sections?|sec\.?|s\.)?\s*(\d{1,3}[A-Z]{0,2})\b((?:\s*\(\s*\w{1,4}\s*\))*)`, 'gi'))) {
+    addSection(toActCode(act), number, subsection);
   }
   // "302 IPC"
-  for (const [, number, act] of value.matchAll(/\b(\d{1,3}[A-Z]{0,2})\s+(IPC|BNSS|BNS|CrPC|BSA|IEA)\b/gi)) addSection(toActCode(act), number);
+  for (const [, number, subsection, act] of value.matchAll(/\b(\d{1,3}[A-Z]{0,2})((?:\s*\(\s*\w{1,4}\s*\))*)\s+(IPC|BNSS|BNS|CrPC|BSA|IEA)\b/gi)) addSection(toActCode(act), number, subsection);
+
+  // Exact instrument names and unambiguous aliases; a practice-area label alone is not a legal citation.
+  for (const { entry, after, before } of catalogueReferences) {
+    for (const [, n, sub] of value.matchAll(after)) addSection(entry.id, n, sub, entry.instrumentType === 'rules' ? 'r.' : 's.');
+    for (const [, n, sub] of value.matchAll(before)) addSection(entry.id, n, sub, entry.instrumentType === 'rules' ? 'r.' : 's.');
+  }
 
   return { constitution, sections };
 };
@@ -152,45 +180,56 @@ export const condenseSection = (text, max, focus = null) => {
 };
 
 /** The tag an answer cites a provision by: "[Article 21]", "[BNS s.38]". */
-export const citationTag = (act, label) => (act === 'COI' || !act
-  ? (label.startsWith('Art.') ? `Article ${label.slice(4)}` : humanLabel(label))
-  : `${act} ${label}`);
+export const citationTag = (act, label) => {
+  if (act === 'COI' || !act) return label.startsWith('Art.') ? `Article ${label.slice(4)}` : humanLabel(label);
+  const catalogued = PRACTICE_ACTS.find((entry) => entry.id === act && !['BNS2023', 'BNSS2023', 'BSA2023'].includes(entry.id));
+  return `${catalogued?.title || act} ${label}`;
+};
 
 const actIdFor = (store, code) => {
   if (code === 'COI') return store.findAct(CONSTITUTION);
   const act = CENTRAL_ACTS[code];
-  return act ? store.findAct(actRecord(act)) : null;
+  if (act) return store.findAct(actRecord(act));
+  const catalogued = PRACTICE_ACTS.find((entry) => entry.id === code && entry.jurisdiction === 'IN');
+  return catalogued ? store.findAct({ shortTitle: catalogued.title, year: catalogued.year }) : null;
 };
 
 /** Official text of one section of a Central Act as evidence. */
 const sectionEvidence = (code, version, { note = null, budget = MAX_EVIDENCE_CHARS, focus = null } = {}) => {
-  const act = CENTRAL_ACTS[code];
+  const act = CENTRAL_ACTS[code] || PRACTICE_ACTS.find((entry) => entry.id === code && entry.jurisdiction === 'IN');
+  if (!act || !isCitableOfficialSource(version.source_url, version.source_sha256)) return null;
+  const title = act.shortTitle || act.title;
   const footnotes = JSON.parse(version.footnotes || '[]');
   const context = JSON.parse(version.context || 'null');
   const where = [context?.chapter && `${context.chapter}${context.chapterTitle ? ` (${context.chapterTitle})` : ''}`, context?.group]
     .filter(Boolean).join('; ');
-  const number = version.label.replace(/^s\./, '');
+  const number = version.label.replace(/^[sr]\./, '');
+  const unit = act.instrumentType === 'rules' ? 'rule' : 'section';
   const lines = [
-    `${act.shortTitle}, section ${number}${version.heading ? ` — ${version.heading}` : ''}. Cite it as [${citationTag(code, version.label)}].`,
+    `${title}, ${unit} ${number}${version.heading ? ` — ${version.heading}` : ''}. Cite it as [${citationTag(code, version.label)}].`,
     where ? `Location: ${where}.` : null,
     note,
-    `Official text (Gazette of India ${version.gazette_ref || act.gazetteId}), in force since ${version.valid_from}:`,
+    version.gazette_ref ? `Official text (Gazette of India ${version.gazette_ref}), indexed as in force since ${version.valid_from}:`
+      : `Stored official-source text, indexed as in force since ${version.valid_from}; verify amendments and commencement against the linked source:`,
+    version.verified_through ? `This edition was reviewed through ${version.verified_through}; it is unavailable for later as-of dates until a newer edition is checked.` : null,
     condenseSection(version.text, budget, focus),
     ...footnotes.filter((item) => item.pending).map((item) => `NOT IN FORCE — ${item.text}`),
+    ...footnotes.filter((item) => item.invalidated).map((item) => `JUDICIAL CAUTION — ${item.text}`),
   ];
   return {
     kind: 'statute',
     act: code,
     label: version.label,
     url: version.source_url,
-    domain: hostOf(version.source_url) ?? 'egazette.gov.in',
-    title: `${act.shortTitle} — section ${number}${version.heading ? ` (${version.heading})` : ''}`,
+    domain: hostOf(version.source_url),
+    title: `${title} — ${unit} ${number}${version.heading ? ` (${version.heading})` : ''}`,
     content: lines.filter(Boolean).join('\n'),
     retrievedAt: new Date().toISOString(),
   };
 };
 
 const statuteEvidence = (label, version, { note = null, budget = MAX_EVIDENCE_CHARS, focus = null } = {}) => {
+  if (!isCitableOfficialSource(version.source_url, version.source_sha256)) return null;
   const footnotes = JSON.parse(version.footnotes || '[]');
   const context = JSON.parse(version.context || 'null');
   const where = [context?.part, context?.chapter, context?.group].filter(Boolean).join('; ');
@@ -264,7 +303,8 @@ export const retrieveLegalEvidence = ({ store, references, asOf = new Date().toI
     if (!constitutionId) break;
     const version = store.getProvisionAsOf({ actId: constitutionId, label, date: asOf });
     if (version) {
-      evidence.push(statuteEvidence(label, version));
+      const item = statuteEvidence(label, version);
+      if (item) evidence.push(item);
     } else {
       evidence.push({
         kind: 'statute-absence',
@@ -281,7 +321,10 @@ export const retrieveLegalEvidence = ({ store, references, asOf = new Date().toI
   for (const reference of references.sections.slice(0, MAX_PROVISIONS)) {
     const actId = actIdFor(store, reference.act);
     const version = actId ? store.getProvisionAsOf({ actId, label: reference.label.replace(/\(.*$/, ''), date: asOf }) : null;
-    if (version) evidence.push(sectionEvidence(reference.act, version));
+    if (version) {
+      const item = sectionEvidence(reference.act, version);
+      if (item) evidence.push(item);
+    }
     const rows = store.findCorrespondence(reference);
     if (rows.length) evidence.push(correspondenceEvidence(reference, rows));
     // A repealed code's section: teach from the official text of its successor in force.
@@ -293,9 +336,10 @@ export const retrieveLegalEvidence = ({ store, references, asOf = new Date().toI
         const successorId = actIdFor(store, code);
         const current = successorId ? store.getProvisionAsOf({ actId: successorId, label: successor, date: asOf }) : null;
         if (current) {
-          evidence.push(sectionEvidence(code, current, {
+          const item = sectionEvidence(code, current, {
             note: `In force in place of the repealed ${reference.act} ${reference.label} (by LawBuddy's text alignment of the two codes).`,
-          }));
+          });
+          if (item) evidence.push(item);
         }
       }
     }
@@ -349,7 +393,10 @@ export const conceptEvidence = ({ store, analysis, asOf }) => {
     const actId = actIdFor(store, provision.act);
     const version = actId ? store.getProvisionAsOf({ actId, label: provision.label, date: asOf }) : null;
     if (!version) {
-      warnings.push(`${citationTag(provision.act, provision.label)} is not in the library.`);
+      const prior = actId ? store.lastProvisionReview?.({ actId, label: provision.label }) : null;
+      warnings.push(prior?.verified_through < asOf
+        ? `${citationTag(provision.act, provision.label)} was last verified through ${prior.verified_through}, not ${asOf}.`
+        : `${citationTag(provision.act, provision.label)} is not in the library.`);
       continue;
     }
     if (!provision.expect.test(String(version.heading || '').replace(/\.$/, ''))) {
@@ -359,9 +406,11 @@ export const conceptEvidence = ({ store, analysis, asOf }) => {
     const note = roleNote({ ...provision, conceptName: names.get(provision.concept) });
     const budget = Math.round((ROLE_BUDGET[provision.role] ?? MAX_EVIDENCE_CHARS) * (scenario ? SCENARIO_BUDGET_SHARE : 1));
     const shaping = { note, budget, focus: analysis.focus };
-    evidence.push(provision.act === 'COI'
-      ? { ...statuteEvidence(provision.label, version, shaping), via: 'concept', role: provision.role }
-      : { ...sectionEvidence(provision.act, version, shaping), via: 'concept', role: provision.role });
+    const item = provision.act === 'COI'
+      ? statuteEvidence(provision.label, version, shaping)
+      : sectionEvidence(provision.act, version, shaping);
+    if (item) evidence.push({ ...item, via: 'concept', role: provision.role });
+    else warnings.push(`${citationTag(provision.act, provision.label)} was skipped: source provenance is incomplete or not official.`);
   }
   return { evidence, warnings };
 };
@@ -400,12 +449,13 @@ const MIN_TERM_COVERAGE = 0.5;
 
 const CODE_BY_TITLE = new Map([
   [CONSTITUTION.shortTitle, 'COI'],
+  ...PRACTICE_ACTS.filter((act) => act.jurisdiction === 'IN' && act.instrumentType !== 'standard').map((act) => [act.title, act.id]),
   ...Object.values(CENTRAL_ACTS).map((act) => [act.shortTitle, act.code]),
 ]);
 
 const searchEvidence = (store, question, asOf, limit) => {
   // Any-word search ranked by BM25: provisions matching more (and rarer) words of the question rank first.
-  const hits = store.searchProvisions(question, { limit, match: 'any' });
+  const hits = store.searchProvisions(question, { asOf, limit, match: 'any', officialOnly: true });
   const best = hits[0]?.score ?? 0;
 
   return hits
@@ -423,25 +473,27 @@ const searchEvidence = (store, question, asOf, limit) => {
     .filter(Boolean)
     .map(({ code, version }) => {
       const evidence = code === 'COI' ? statuteEvidence(version.label, version) : sectionEvidence(code, version);
+      if (!evidence) return null;
       return {
         ...evidence,
         via: 'search',
         title: `${evidence.title} (found by search)`,
         content: `Found by searching the official text for the student's question; teach it only if it answers that question.\n${evidence.content}`,
       };
-    });
+    }).filter(Boolean);
 };
 
 /**
  * Attaches the question analysis (kind, concepts, the answer format) to the evidence for the prompt, as a
  * non-enumerable property: the evidence stays a plain array of evidence items for every other reader.
  */
-const withAnalysis = (evidence, analysis, warnings = []) => Object.defineProperty(evidence, 'analysis', {
+const withAnalysis = (evidence, analysis, warnings = [], coverage = null) => Object.defineProperty(evidence, 'analysis', {
   value: {
     kind: analysis.kind,
     concepts: analysis.concepts,
     direction: evidence.length ? answerDirection(analysis.kind) : null,
     warnings,
+    ...(coverage ? { coverage } : {}),
     // The question itself, so the answer check can tell a quotation of the question from one of the law.
     question: analysis.question ?? null,
   },
@@ -460,6 +512,34 @@ export const createLawRetriever = ({ loader, asOf, searchLimit = 3 }) => async (
 
   const analysis = { ...analyseQuestion(params.text), question: String(params.text || '') };
   const references = detectLegalReferences(params.text);
+  // A named procedural section must not short-circuit the merits of a cyber-defence question.
+  // Require both independently verified IT Act provisions, including their expected headings,
+  // before any other evidence is allowed into the answer prompt.
+  if (analysis.concepts.some((concept) => concept.id === 'unauthorised-security-testing')) {
+    const { evidence: core, warnings } = conceptEvidence({ store, analysis, asOf: date });
+    const missing = ['s.43', 's.66'].filter((label) => !core.some((item) => item.kind === 'statute' && item.act === 'IT2000' && item.label === label));
+    if (missing.length) {
+      const itActId = actIdFor(store, 'IT2000');
+      const missingProvisions = missing.map((label) => {
+        const reviewedThrough = itActId ? store.lastProvisionReview?.({ actId: itActId, label })?.verified_through : null;
+        return { act: 'IT2000', label, ...(reviewedThrough ? { reviewedThrough } : {}) };
+      });
+      return withAnalysis([], analysis, [
+        `Information Technology Act, 2000 ${missing.map((label) => `section ${label.slice(2)}`).join(' and ')} ${missing.length === 1 ? 'is' : 'are'} needed to answer this question but verified text is not indexed for ${date}.`,
+        ...warnings,
+      ], { status: 'unavailable', missing: missingProvisions, asOf: date });
+    }
+    const named = references.constitution.length || references.sections.length
+      ? retrieveLegalEvidence({ store, references, asOf: date }) : [];
+    const seen = new Set();
+    const evidence = [...core, ...named].filter((item) => {
+      const key = item.kind === 'statute' ? `${item.act}:${item.label}` : `${item.kind}:${item.title}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return withAnalysis(evidence, analysis, warnings, { status: 'ready', missing: [], asOf: date });
+  }
   if (references.constitution.length || references.sections.length) {
     const evidence = retrieveLegalEvidence({ store, references, asOf: date });
     if (evidence.length) return withAnalysis(evidence, analysis);

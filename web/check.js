@@ -6,13 +6,14 @@ import { el, fetchJson, formatDate, hostOf, safeLink } from './common.js';
 const MAX_BYTES = 30 * 1024 * 1024;
 const FIRST_SHOWN = 25;
 const VERDICTS = Object.freeze({
-  official: ['ok', 'The official text itself'],
-  matches: ['ok', 'Matches the official text'],
-  differs: ['warn', 'Differs from the official text'],
-  outdated: ['warn', 'Outdated'],
-  unreadable: ['warn', 'Could not be compared'],
+  official: ['ok', 'Matches imported source file'],
+  matches: ['ok', 'No difference detected'],
+  differs: ['warn', 'Differences found'],
+  outdated: ['warn', 'Possible outdated copy'],
+  'needs-review': ['warn', 'Needs review'],
+  unreadable: ['warn', 'Could not compare'],
   repealed: ['danger', 'Repealed law'],
-  reliable: ['ok', 'Checks out'],
+  reliable: ['ok', 'No checked issue found'],
   'use-with-care': ['warn', 'Use with care'],
   unreliable: ['danger', 'Contains errors'],
   'nothing-to-check': ['', 'Nothing to check'],
@@ -21,11 +22,13 @@ const KIND_TEXT = Object.freeze({
   'act-copy': 'a copy of an Act LawBuddy holds in its official text',
   repealed: 'a copy of a repealed code',
   'write-up': 'a write-up (notes, an article or an answer) about the law',
+  unsupported: 'an Act-like document LawBuddy cannot compare yet',
 });
 
 const form = document.getElementById('check-form');
 const fileInput = document.getElementById('file');
 const dateInput = document.getElementById('date');
+const localOnlyInput = document.getElementById('local-only');
 const button = document.getElementById('check');
 const statusLine = document.getElementById('status');
 const verdictBadge = document.getElementById('verdict');
@@ -50,6 +53,20 @@ const judgmentLink = (judgment) => (judgment
   ? safeLink(judgment.pdfUrl, `${judgment.title}${judgment.decidedOn ? ` (${formatDate(judgment.decidedOn)})` : ''}`)
   : null);
 
+/** The checker may attach a page or a list of pages to a finding. */
+const pageEvidence = (finding) => {
+  const values = [finding?.page, ...(Array.isArray(finding?.pages) ? finding.pages : [])];
+  const pages = [...new Set(values.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0))];
+  return pages.length ? el('p', { className: 'page-evidence', text: `Page evidence: ${pages.join(', ')}` }) : null;
+};
+
+const judicialNotes = (finding) => (finding.judicial || []).map((note) => el('div', { className: 'judicial' }, [
+  el('strong', { text: note.kind === 'struck-down' ? 'Struck-down note: ' : 'Commencement note: ' }),
+  document.createTextNode(note.text),
+  note.judgment ? el('span', { className: 'judgment' }, [document.createTextNode(' Judgment: '), judgmentLink(note.judgment)]) : null,
+  pageEvidence(note),
+].filter(Boolean)));
+
 /** A titled list that shows the first FIRST_SHOWN items and a button for the rest. */
 const group = (title, items, render, { note = null } = {}) => {
   const list = el('ul', { className: 'diff-list' }, items.slice(0, FIRST_SHOWN).map(render));
@@ -72,52 +89,101 @@ const item = (head, detail, children) => el('li', { className: 'diff' }, [
 
 // ------------------------------------------------------------------ copies of Acts
 
+const notLocated = (report) => Array.isArray(report.absentLabels)
+  ? report.absentLabels
+  : Array.isArray(report.notLocated) ? report.notLocated : [];
+
+const absentCount = (report) => Number.isInteger(report.counts?.absent)
+  ? report.counts.absent
+  : notLocated(report).length;
+
+const scopeOf = (report) => {
+  const declared = report.scope?.kind ?? report.scope ?? report.copyScope;
+  if (declared === 'extract' || declared === 'partial') return 'extract';
+  if (declared === 'apparently-incomplete' || declared === 'incomplete') return 'apparently-incomplete';
+  if (declared === 'complete') return 'complete';
+  if (report.partial) return 'extract';
+  return absentCount(report) ? 'apparently-incomplete' : 'complete';
+};
+
+const actCopySummary = (report) => {
+  if (report.verdict === 'official') {
+    return `This PDF has the same SHA-256 fingerprint as the source file imported into LawBuddy for ${report.act}. Confirm that the imported source is current before relying on it.`;
+  }
+  const counts = report.counts;
+  if (!counts) return report.summary;
+  const parts = [`LawBuddy located ${counts.present} of ${counts.comparable} comparable provisions in the uploaded PDF.`];
+  if (counts.reworded) parts.push(`${counts.reworded} difference${counts.reworded === 1 ? '' : 's'} need review.`);
+  if (counts.explained) parts.push(`${counts.explained} difference${counts.explained === 1 ? '' : 's'} have judicial or commencement notes to review.`);
+  if (absentCount(report)) parts.push(`${absentCount(report)} provision${absentCount(report) === 1 ? ' was' : 's were'} not located.`);
+  if (report.newerThanCopy?.length) parts.push(`${report.newerThanCopy.length} provision${report.newerThanCopy.length === 1 ? ' has' : 's have'} a library effective date after the print date supplied; this date signal alone does not show that the copy has old wording.`);
+  if (report.verdict === 'unreadable') parts.push('Too little text could be located for a dependable comparison.');
+  return parts.join(' ');
+};
+
 const actCopyGroups = (report) => {
   const groups = [];
-  if (report.partial) {
+  const scope = scopeOf(report);
+  const absent = absentCount(report);
+  if (scope === 'extract') {
     groups.push(el('div', { className: 'notice warn partial' }, [
-      el('strong', { text: 'This is part of the Act, not a full copy' }),
-      document.createTextNode(`It holds ${report.counts.present} of ${report.counts.comparable} provisions; the check covers what it contains, and the missing provisions are not counted as errors.`),
+      el('strong', { text: 'Appears to be an extract' }),
+      document.createTextNode(`LawBuddy located ${report.counts.present} of ${report.counts.comparable} comparable provisions. It checked the text it could locate; provisions outside an extract still need separate checking.`),
+    ]));
+  } else if (scope === 'apparently-incomplete') {
+    groups.push(el('div', { className: 'notice warn partial' }, [
+      el('strong', { text: 'Apparently incomplete copy' }),
+      document.createTextNode(`${absent} provision${absent === 1 ? ' was' : 's were'} not located. The PDF may omit them, or extraction may have missed them. Review the pages and source before treating this as a complete Act.`),
     ]));
   }
+  if (absent) {
+    const labels = notLocated(report);
+    groups.push(labels.length
+      ? group('Provisions not located in the PDF', labels, (entry) => {
+        const label = typeof entry === 'string' ? entry : entry.label;
+        return item(label || 'Unlabelled provision', null, [typeof entry === 'string' ? null : pageEvidence(entry)]);
+      }, { note: 'Not located does not prove the provision is missing from the printed pages. A scan, unusual layout or deliberate extract can also cause this result.' })
+      : el('p', { className: 'group-note', text: `${absent} provisions could not be located in the PDF.` }));
+  }
   if (report.newerThanCopy?.length) {
-    groups.push(group("Took effect after your copy's date", report.newerThanCopy, (provision) =>
-      item(provision.label, `in force from ${formatDate(provision.validFrom)}`, [provision.heading ? el('p', { text: provision.heading }) : null])));
+    groups.push(group('Library dates later than the supplied print date', report.newerThanCopy, (provision) =>
+      item(provision.label, `library date ${formatDate(provision.validFrom)}`, [provision.heading ? el('p', { text: provision.heading }) : null, pageEvidence(provision)]),
+    { note: 'A printed date is only a clue. Compare the actual wording and check commencement before deciding that this copy is outdated.' }));
   }
   if (report.reworded?.length) {
-    groups.push(group('Reads differently from the official text in force', report.reworded, (provision) =>
-      item(provision.title, `${Math.round(provision.coverage * 100)}% of the official wording found`, [
+    groups.push(group('Differences from the imported official source', report.reworded, (provision) =>
+      item(provision.title || provision.label, Number.isFinite(provision.coverage) ? `${Math.round(provision.coverage * 100)}% of the imported wording detected` : null, [
         provision.heading ? el('p', { text: provision.heading }) : null,
-        provision.missing?.length ? phrases('Official words your copy lacks: ', provision.missing) : null,
+        provision.missing?.length ? phrases('Imported source words not detected in your copy: ', provision.missing) : null,
+        pageEvidence(provision),
+        ...judicialNotes(provision),
         learnLink(provision.title),
       ])));
   }
   if (report.explained?.length) {
-    groups.push(group('Differs only where a court struck down the printed amendment', report.explained, (provision) =>
-      item(provision.title, null, [
-        provision.missing?.length ? phrases('The official text prints: ', provision.missing) : null,
-        ...provision.judicial.map((note) => el('p', { className: 'judicial' }, [
-          el('strong', { text: note.kind === 'struck-down' ? 'Struck down: ' : 'Not in force: ' }),
-          document.createTextNode(note.text),
-          note.judgment ? el('span', { className: 'judgment' }, [document.createTextNode(' Judgment: '), judgmentLink(note.judgment)]) : null,
-        ].filter(Boolean))),
-      ]), { note: 'Your copy is not wrong here: the words it lacks are an amendment the Supreme Court struck down, or one never brought into force, so the older wording in your copy is what applies.' }));
+    groups.push(group('Differences with judicial or commencement notes', report.explained, (provision) =>
+      item(provision.title || provision.label, null, [
+        provision.missing?.length ? phrases('The imported source prints: ', provision.missing) : null,
+        pageEvidence(provision),
+        ...judicialNotes(provision),
+      ]), { note: 'Read the cited note and compare the exact changed words. A note about a provision does not by itself explain every difference in that provision.' }));
   }
-  if (!groups.length || (!report.reworded?.length && !report.newerThanCopy?.length)) {
+  if (!report.reworded?.length && !report.newerThanCopy?.length && !report.explained?.length && !absent) {
     groups.push(el('p', { className: 'empty', text: report.verdict === 'official'
-      ? 'Nothing to compare: this is the official file itself.'
-      : 'Every provision your copy contains matches the official text in force.' }));
+      ? 'The upload is the same file as the imported source.'
+      : 'No difference was detected in the provisions LawBuddy could locate.' }));
   }
   return groups;
 };
 
 const actCopyFacts = (report) => [
-  el('li', { className: report.counts.reworded ? '' : 'ok', text: `${report.counts.identical} of ${report.counts.present} provisions in your copy match word for word` }),
+  el('li', { className: report.counts.reworded || absentCount(report) ? 'warn' : 'info', text: `No difference detected in ${report.counts.identical} of ${report.counts.present} located provisions` }),
   report.counts.reworded ? el('li', { className: 'warn', text: `${report.counts.reworded} read differently` }) : null,
-  report.counts.explained ? el('li', { className: 'info', text: `${report.counts.explained} differ only where a court struck down the printed text` }) : null,
-  report.counts.formatting ? el('li', { text: `${report.counts.formatting} differ only in how the PDF was printed (line breaks, page heads): not counted` }) : null,
+  absentCount(report) ? el('li', { className: 'warn', text: `${absentCount(report)} not located in the PDF` }) : null,
+  report.counts.explained ? el('li', { className: 'warn', text: `${report.counts.explained} differences have legal notes to review` }) : null,
+  report.counts.formatting ? el('li', { text: `${report.counts.formatting} may reflect PDF layout or extraction` }) : null,
   report.textCurrentTo ? el('li', { text: `Amendment footnotes stop at ${formatDate(report.textCurrentTo)}` }) : null,
-  report.official ? el('li', {}, [document.createTextNode(`Checked against the official ${report.act}: `), safeLink(report.official.url, hostOf(report.official.url) || 'official source')]) : null,
+  report.official ? el('li', {}, [document.createTextNode(`Imported source for ${report.act}: `), safeLink(report.official.url, hostOf(report.official.url) || 'source')]) : null,
 ];
 
 // ------------------------------------------------------------------ repealed codes
@@ -148,23 +214,34 @@ const repealedGroups = (report) => [
     el('h3', { text: `Repealed by ${report.repeal.act}, section ${report.repeal.label.slice(2)}` }),
     el('blockquote', { className: 'official', text: report.repeal.text }),
     el('p', { text: `In force from ${formatDate(report.repeal.validFrom)}.` }),
+    pageEvidence(report.repeal),
   ]) : null,
   lookupBox(report),
+].filter(Boolean);
+
+const unsupportedGroups = (report) => [
+  el('div', { className: 'notice warn partial' }, [
+    el('strong', { text: 'No section-level check was run' }),
+    document.createTextNode('This appears to be an Act that LawBuddy does not yet hold as an imported official source. Review it against the relevant Gazette or India Code publication.'),
+  ]),
+  report.identified?.words ? el('p', { className: 'group-note', text: `${report.identified.words} words were extracted, but readable text alone cannot establish whether the Act is current.` }) : null,
 ].filter(Boolean);
 
 // ------------------------------------------------------------------ write-ups
 
 const STATUS_TEXT = Object.freeze({
-  'in-force': ['ok', 'In force'],
-  'not-found': ['danger', 'Not in the official text'],
+  'in-force': ['ok', 'In library text'],
+  'not-in-force': ['danger', 'Not verified in force'],
+  'commencement-caution': ['warn', 'Commencement needs review'],
+  'not-found': ['danger', 'Not in imported text'],
   'not-held': ['', 'Not in the library'],
   repealed: ['warn', 'Repealed'],
-  exact: ['ok', 'Word for word'],
-  approximate: ['ok', 'Matches closely'],
+  exact: ['ok', 'Quotation found'],
+  approximate: ['warn', 'Similar wording found'],
   altered: ['danger', 'Not the law\'s wording'],
   'cut-before-condition': ['warn', 'Stops before a condition'],
   unmatched: ['', 'Not a provision LawBuddy holds'],
-  verified: ['ok', 'Verified'],
+  verified: ['ok', 'Citation matched index'],
   'name-mismatch': ['danger', 'Wrong case for this citation'],
   overruled: ['danger', 'Overruled'],
   caution: ['warn', 'Partly overruled or doubted'],
@@ -193,6 +270,7 @@ const writeUpGroups = (report) => {
     groups.push(group('Provisions it names', report.references, (reference) => item(reference.reference, null, [
       chip(reference.status),
       reference.heading ? el('p', { text: reference.heading }) : null,
+      pageEvidence(reference),
       reference.status === 'repealed'
         ? el('p', { text: reference.successors.length
           ? `Replaced by ${reference.successors.map((successor) => `${successor.tag}${successor.heading ? ` (${successor.heading})` : ''}`).join('; ')}. Matched by LawBuddy from the two texts.`
@@ -205,6 +283,7 @@ const writeUpGroups = (report) => {
       chip(quotation.status),
       el('blockquote', { text: `“${quotation.text}”` }),
       quotation.condition ? el('p', { text: `The official text continues: “${quotation.condition}…”` }) : null,
+      pageEvidence(quotation),
     ])));
   }
   if (report.citations.length) {
@@ -215,6 +294,7 @@ const writeUpGroups = (report) => {
         judgmentLink(citation.judgment),
         document.createTextNode(`${citation.judgment.bench ? ` · ${citation.judgment.bench}-judge bench` : ''}${citation.judgment.citedBy ? ` · cited in ${citation.judgment.citedBy} later judgments indexed` : ''}`),
       ]) : null,
+      pageEvidence(citation),
     ])));
   }
   const claims = report.critique?.claims || [];
@@ -224,6 +304,7 @@ const writeUpGroups = (report) => {
       el('p', { text: claim.text }),
       claim.reason ? el('p', { className: 'claim-reason', text: claim.reason }) : null,
       claim.correction ? el('p', { className: 'claim-correction' }, [el('strong', { text: 'What the text says: ' }), document.createTextNode(claim.correction)]) : null,
+      pageEvidence(claim),
     ]), { note: `Read by a second model (${report.critique.model}) beside the official text of each provision.` }));
   } else if (report.critique?.error) {
     groups.push(el('p', { className: 'empty', text: report.critique.error }));
@@ -233,7 +314,7 @@ const writeUpGroups = (report) => {
 };
 
 const writeUpFacts = (report) => [
-  el('li', { text: `${report.counts.references} provisions, ${report.counts.quotations} quotations and ${report.counts.citations} case citations checked` }),
+  el('li', { text: `${report.counts.references} provisions, ${report.counts.quotations} quotations and ${report.counts.citations} case citations identified` }),
   report.counts.claims ? el('li', { text: `${report.counts.claims} claims read against the law they cite` }) : null,
   report.counts.errors ? el('li', { className: 'danger', text: `${report.counts.errors} errors` }) : null,
   report.counts.warnings ? el('li', { className: 'warn', text: `${report.counts.warnings} points need care` }) : null,
@@ -251,12 +332,19 @@ const render = (report) => {
   verdictBadge.className = `badge ${tone}`;
   verdictBadge.textContent = text;
   verdictBadge.hidden = false;
-  summary.textContent = `LawBuddy read this as ${KIND_TEXT[report.kind] || 'a document'}${report.act ? ` (${report.act})` : ''}. ${report.summary}`;
+  const resultSummary = report.kind === 'act-copy' ? actCopySummary(report) : report.summary;
+  summary.textContent = `LawBuddy read this as ${KIND_TEXT[report.kind] || 'a document'}${report.act ? ` (${report.act})` : ''}. ${resultSummary || 'This document could not be fully checked.'}`;
   summary.hidden = false;
 
   const kindFacts = report.kind === 'act-copy' ? actCopyFacts(report) : report.kind === 'write-up' ? writeUpFacts(report) : [];
   facts.replaceChildren(...kindFacts.filter(Boolean));
-  const groups = report.kind === 'act-copy' ? actCopyGroups(report) : report.kind === 'repealed' ? repealedGroups(report) : writeUpGroups(report);
+  const groups = report.kind === 'act-copy' ? actCopyGroups(report)
+    : report.kind === 'repealed' ? repealedGroups(report)
+      : report.kind === 'unsupported' ? unsupportedGroups(report)
+        : writeUpGroups(report);
+  if (report.kind !== 'unsupported') {
+    groups.push(el('p', { className: 'source-caveat', text: 'This check uses official sources imported into LawBuddy. Check for later amendments, commencement notifications and decisions before relying on their current status.' }));
+  }
   changes.replaceChildren(...groups);
 };
 
@@ -270,10 +358,14 @@ form.addEventListener('submit', async (event) => {
     return;
   }
 
+  const localOnly = localOnlyInput.checked;
   const params = new URLSearchParams({ act: 'auto' });
   if (dateInput.value) params.set('date', dateInput.value);
+  if (!localOnly) params.set('cloudClaims', '1');
   button.disabled = true;
-  statusLine.textContent = 'Reading your PDF, working out what it is and checking it. A write-up\'s claims are read one by one, which can take a minute…';
+  statusLine.textContent = localOnly
+    ? 'Reading your PDF and running local checks…'
+    : 'Reading your PDF and checking it. Optional AI claim analysis can take a minute…';
   try {
     const response = await fetch(`/lawbuddy/api/copy-check?${params}`, {
       method: 'POST',
@@ -286,7 +378,9 @@ form.addEventListener('submit', async (event) => {
       showError(body.error || `The check failed (HTTP ${response.status}).`);
       return;
     }
-    statusLine.textContent = `Checked ${file.name}.`;
+    statusLine.textContent = localOnly
+      ? `Checked ${file.name} locally. AI claim analysis was skipped.`
+      : `Checked ${file.name}.`;
     render(body);
   } catch {
     statusLine.textContent = 'The check did not complete.';

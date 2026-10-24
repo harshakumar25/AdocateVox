@@ -7,7 +7,7 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "cli": "node --disable-warning=ExperimentalWarning src/cli.js",
-    "lint": "node --check src/**/*.js web/*.js",
+    "lint": "find src web -name '*.js' -type f -print0 | xargs -0 -n 1 node --check",
     "dev": "node scripts/dev.mjs",
     "start": "node scripts/dev.mjs"
   },

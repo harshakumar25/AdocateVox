@@ -116,7 +116,7 @@ const pageTexts = async (file) => {
  * The file is read in a private temporary folder and deleted; only its sha256 is kept with the report.
  */
 export const checkUploadedDocument = async ({
-  store, body, copyDate = null, readPages = pageTexts, critique, tmpRoot = os.tmpdir(),
+  store, body, copyDate = null, readPages = pageTexts, critique, cloudClaims = false, tmpRoot = os.tmpdir(),
 }) => {
   const sha256 = crypto.createHash('sha256').update(body).digest('hex');
   const dir = await fs.mkdtemp(path.join(tmpRoot, 'lawbuddy-upload-'));
@@ -131,18 +131,27 @@ export const checkUploadedDocument = async ({
   if (!pages.join('').trim()) {
     return { ok: false, status: 422, error: 'This PDF has no text layer (it is a scan or images), so there is nothing LawBuddy can read in it.' };
   }
-  const report = await checkDocument({ store, pages, copyDate, sha256, ...(critique ? { critique } : {}) });
-  return report.ok ? { ...report, copy: { url: null, sha256, upload: true, fileDate: copyDate } } : report;
+  const report = await checkDocument({ store, pages, copyDate, sha256,
+    ...(cloudClaims ? (critique ? { critique } : {}) : { critique: async () => null }),
+  });
+  return report.ok ? {
+    ...report,
+    ...(report.kind === 'write-up' && !cloudClaims && report.critique === null
+      ? { critique: { error: 'Claim-by-claim model review was not run because local-only processing was selected.' } }
+      : {}),
+    processing: { cloudClaims },
+    copy: { url: null, sha256, upload: true, fileDate: copyDate },
+  } : report;
 };
 
 export const checkUploadedCopy = async ({
-  store, body, act = 'constitution', copyDate = null, extract = extractPdfText, now = Date.now, tmpRoot = os.tmpdir(), readPages, critique,
+  store, body, act = 'constitution', copyDate = null, extract = extractPdfText, now = Date.now, tmpRoot = os.tmpdir(), readPages, critique, cloudClaims = false,
 }) => {
   if (!looksLikePdf(body)) return { ok: false, status: 415, error: 'That file is not a PDF.' };
   if (copyDate !== null && (!ISO_DATE.test(copyDate) || Number.isNaN(Date.parse(copyDate)))) {
     return { ok: false, status: 400, error: 'The date of your copy must be YYYY-MM-DD.' };
   }
-  if (act === 'auto') return checkUploadedDocument({ store, body, copyDate, tmpRoot, readPages, critique });
+  if (act === 'auto') return checkUploadedDocument({ store, body, copyDate, tmpRoot, readPages, critique, cloudClaims });
   const { error, actRef, actId, official } = resolveAct(store, act);
   if (error) return error;
 

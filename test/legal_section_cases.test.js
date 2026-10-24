@@ -36,8 +36,8 @@ test('a BNS section finds the judgments on the IPC section it carries forward, e
         { newLabel: 's.310(1)', newTitle: 'Dacoity', oldLabel: 's.391', oldTitle: 'Dacoity', kind: 'mapped', changed: false, chapter: null },
       ],
     });
-    const add = (key, title, bench, provisions) => store.upsertScCase({
-      key, title, sourceUrl: `https://x/${key}.json`, pdfUrl: `https://x/${key}.pdf`, decidedOn: '1990-01-01', benchStrength: bench,
+    const add = (key, title, bench, provisions, decidedOn = '1990-01-01') => store.upsertScCase({
+      key, title, sourceUrl: `https://x/${key}.json`, pdfUrl: `https://x/${key}.pdf`, decidedOn, benchStrength: bench,
       headnote: 'Penal Code, 1860', provisions,
     });
     add('a', 'STATE versus GANG', 3, [{ act: 'IPC', label: 's.396', group: 0 }]);
@@ -53,6 +53,12 @@ test('a BNS section finds the judgments on the IPC section it carries forward, e
     assert.deepEqual(result.predecessors.map((item) => item.old), ['IPC s.396', 'IPC s.391']);
     assert.equal(casesForProvision(store, { provision: 'IPC 302' }).cases[0].title, 'UNRELATED versus Z', 'old sections can be asked about directly');
     assert.equal(casesForProvision(store, { provision: 'BNS s.999' }).relation, 'none');
+    add('d', 'LATER versus STATE', 7, [{ act: 'IPC', label: 's.396', group: 0 }], '2025-04-01');
+    const historic = casesForProvision(store, { provision: 'BNS s.310', decidedBy: '2020-01-01' });
+    assert.deepEqual(historic.cases.map((card) => card.title), ['STATE versus GANG', 'X versus Y']);
+    assert.equal(historic.decidedBy, '2020-01-01');
+    assert.equal(casesForProvision(store, { provision: 'BNS s.310', decidedBy: 'not-a-date' }).status, 400);
+    assert.equal(casesForProvision(store, { provision: 'BNS s.310', decidedBy: '2020-02-30' }).status, 400);
   } finally {
     store.close();
   }
