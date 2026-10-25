@@ -44,14 +44,18 @@ export const openCorpus = (file = CORPUS_PATH) => {
     } catch (error) { db.exec('ROLLBACK'); throw error; }
   };
   const search = (query, { topic = '', instrument = '', limit = 8 } = {}) => {
-    const tokens = [...new Set(String(query).match(/[\p{L}\p{N}]{3,}/gu) || [])].slice(0, 24);
+    const stop = new Set(['the','and','for','with','from','what','which','how','does','under','explain','report','please']);
+    const tokens = [...new Set((String(query).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || []).filter(t => !stop.has(t)))].slice(0, 24);
     if (!tokens.length) return [];
     const match = tokens.map((t) => `"${t}"`).join(' OR ');
     return db.prepare(`SELECT c.*,d.title,d.url,d.sha256,d.type,d.note,d.status,d.checked_at,bm25(rag_fts,2,1) AS rank
       FROM rag_fts JOIN rag_chunk c ON c.id=rag_fts.rowid JOIN rag_document d ON d.id=c.document_id
       WHERE rag_fts MATCH ? AND (?='' OR d.id=?) AND (?='' OR EXISTS(SELECT 1 FROM json_each(d.topics) WHERE value=?))
-      ORDER BY rank,c.id LIMIT ?`).all(match,instrument,instrument,topic,topic,Math.max(1,Math.min(30,Number(limit)||8)))
-      .map((r) => ({ ...r, citation: `${r.document_id}, PDF page ${r.page}, offsets ${r.start_offset}-${r.end_offset}`, legalCurrency: 'Unreviewed source snapshot; not verified law in force.' }));
+      ORDER BY rank,c.id LIMIT ?`).all(match,instrument,instrument,topic,topic,Math.max(1,Math.min(120,(Number(limit)||8)*5)))
+      .map((r) => ({ ...r, contentsPage: /arrangement of (?:sections|rules)|(?:^|\n)\s*SECTIONS\s*(?:\n|$)/i.test(r.text), citation: `${r.document_id}, PDF page ${r.page}, offsets ${r.start_offset}-${r.end_offset}`, legalCurrency: 'Unreviewed source snapshot; not verified law in force.' }))
+      .sort((a,b) => (a.contentsPage ? a.rank * .15 : a.rank) - (b.contentsPage ? b.rank * .15 : b.rank))
+      .slice(0,Math.max(1,Math.min(30,Number(limit)||8)))
+      .map((r) => ({...r, adjacentContext: db.prepare('SELECT page,start_offset,end_offset,text FROM rag_chunk WHERE document_id=? AND id IN (?,?) ORDER BY id').all(r.document_id,r.id-1,r.id+1)}));
   };
   return { replace, search, get: (id) => db.prepare('SELECT * FROM rag_document WHERE id=?').get(id),
     coverage: () => db.prepare('SELECT d.*,COUNT(c.id) AS chunks FROM rag_document d LEFT JOIN rag_chunk c ON c.document_id=d.id GROUP BY d.id ORDER BY d.title').all(), close: () => db.close() };

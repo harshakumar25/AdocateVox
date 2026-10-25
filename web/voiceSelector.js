@@ -119,3 +119,22 @@ export function selectBestSpeechVoice(voices) {
   scoredVoices.sort((a, b) => b.score - a.score);
   return scoredVoices[0].voice;
 }
+
+// Browser voices have no portable gender field. Only recognised names or explicit
+// provider labels are assigned to a profile; unknown voices remain selectable by name.
+export function voiceProfile(voice) {
+  const name = String(voice?.name || '').toLowerCase();
+  if (/\bfemale\b|\b(samantha|ava|serena|jenny|aria|zoe|karen|tessa|victoria|allison|moira|veena)\b/.test(name)) return 'female';
+  if (/\bmale\b|\b(oliver|tom|guy|christopher|evan|nathan|rishi|daniel|alex)\b/.test(name)) return 'male';
+  return null;
+}
+export function selectPreferredVoice(voices, preference = 'auto') {
+  const english = (voices || []).filter((v) => /^en(?:-|$)/i.test(v.lang));
+  if (preference === 'auto') return selectBestSpeechVoice(english);
+  if (preference.startsWith('voice:')) return english.find((v) => `voice:${v.voiceURI}` === preference) || null;
+  const candidates = english.filter((v) => voiceProfile(v) === preference);
+  // An explicit male choice may use an installed Daniel/Alex voice; the old blanket
+  // ban must not silently replace a user's requested male narrator with a female one.
+  return candidates.sort((a,b) => scoreSpeechVoice(b) - scoreSpeechVoice(a))[0] || null;
+}
+export const normaliseSpeechRate = (value) => Math.min(1.3, Math.max(0.7, Number(value) || 0.95));

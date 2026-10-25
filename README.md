@@ -104,3 +104,7 @@ Run `npm test` for regressions and `python3 scripts/quality_gates.py memo.txt so
 ### Broader practice full-text indexing
 
 Run `node scripts/index-practice-rag.mjs` to process every Indian catalogue instrument. Use `--recheck` to revalidate cached PDFs, or `--force` to fetch again. Search full-text passages in the homepage practice index, or through `/lawbuddy/api/rag/search`. Coverage and source failures are available at `/lawbuddy/api/rag/coverage`. This is BM25-based RAG retrieval, not vector embeddings; downloaded snapshots remain legally unreviewed.
+
+### Narrator preferences
+
+Teach offers Soft female, Male, Automatic and supported installed English voices, plus preview and reading speed. Preferences are remembered locally. Explicit profiles use device speech for answers; Automatic keeps the configured Chatterbox narrator with browser fallback. Availability and sound depend on installed voices. The browser preview for Automatic previews its fallback, not the server voice.

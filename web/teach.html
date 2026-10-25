@@ -39,6 +39,9 @@
         <textarea id="question" rows="2" maxlength="2000" required placeholder="Ask about an Article, a right or a section…"></textarea>
         <div class="ask-actions">
           <label class="toggle"><input type="checkbox" id="voice" checked> Speak answers</label>
+          <label for="narrator">Narrator</label><select id="narrator"><option value="auto">Automatic · server voice</option><option value="female">Soft female · device voice</option><option value="male">Male · device voice</option></select>
+          <label for="speech-rate">Reading speed</label><select id="speech-rate"><option value="0.8">Slow</option><option value="0.95" selected>Relaxed</option><option value="1.1">Faster</option></select>
+          <button id="voice-preview" type="button" class="button">Preview voice</button><p id="voice-note" role="status">Device voices depend on your browser. Automatic uses the configured server narrator.</p>
           <button class="button ghost" type="button" id="stop" hidden>Stop</button>
           <button class="button" type="submit" id="teach">Teach me</button>
         </div>

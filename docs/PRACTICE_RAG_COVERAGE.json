@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-25T12:07:23.583Z",
+  "generatedAt": "2026-10-25T16:09:35.938Z",
   "summary": {
     "instruments": 43,
-    "indexed": 8,
-    "chunks": 1895,
-    "unavailable": 35
+    "indexed": 10,
+    "chunks": 1924,
+    "unavailable": 33
   },
   "instruments": [
     {
@@ -64,13 +64,13 @@
       "title": "CERT-In Cyber Security Directions under section 70B(6), 2022",
       "topics": "[\"cyber-security\",\"cyber\",\"computer-crime\"]",
       "type": "direction",
-      "url": "https://www.cert-in.org.in/Directions70B.jsp",
-      "sha256": null,
-      "checked_at": "2026-10-25T12:06:44.429Z",
-      "status": "unavailable",
-      "error": "Catalogue page has no discoverable PDF link",
+      "url": "https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf",
+      "sha256": "202c2f3953d792dcfb3ecb3634fc82ab75437ee596de89b8d59a211e8e42431f",
+      "checked_at": "2026-10-25T16:07:52.442Z",
+      "status": "retrieved-text-unreviewed",
+      "error": null,
       "note": "Directions and clarifications have their own scope, reporting criteria and effective dates.",
-      "chunks": 0
+      "chunks": 8
     },
     {
       "id": "CPC1908",
@@ -519,13 +519,13 @@
       "title": "Telecommunications (Telecom Cyber Security) Rules, 2024",
       "topics": "[\"telecom\",\"cyber-security\",\"cyber\"]",
       "type": "rules",
-      "url": "https://eservices.dot.gov.in/telecom-cyber-security",
-      "sha256": null,
-      "checked_at": "2026-10-25T12:06:44.434Z",
-      "status": "unavailable",
-      "error": "Catalogue page has no discoverable PDF link",
+      "url": "https://eservices.dot.gov.in/cyber-security/public/uploads/circulars/Telecommunications%20%28Telecom%20Cyber%20Security%29%20Rules%2C%202024.pdf-1751285968.pdf",
+      "sha256": "5ca93cf8e9ccdb36420bde4ee820b6a8845708440b857b207321c37cb37adb08",
+      "checked_at": "2026-10-25T16:07:56.028Z",
+      "status": "retrieved-text-unreviewed",
+      "error": null,
       "note": "Review the 2025 amendment and later DoT directions as separate changes.",
-      "chunks": 0
+      "chunks": 21
     },
     {
       "id": "TELECOM2023",

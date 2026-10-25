@@ -19,3 +19,7 @@ Remaining work: resolve unavailable official documents; segment multi-notificati
 All 43 Indian catalogue instruments were attempted. Eight yielded accepted text snapshots, totalling 1,895 searchable chunks; 35 remain unavailable. See [per-instrument coverage](PRACTICE_RAG_COVERAGE.json) for exact URLs, hashes, timestamps and errors. Accepted snapshots cover the Constitution, BNS, BNSS, BSA, Companies Act, IT Act, Patents Act and the 2026 intermediary amendment. This is not complete corpus coverage. Most failures are HTTP 403 or robots restrictions; others are missing identifiable PDF links, multi-notification segmentation or licensed text.
 
 The source search API was verified live (HTTP 200 with IT Act passages), and 194 regression tests passed. New tests cover exact offsets, provenance, topic/instrument isolation, replacing stale FTS rows, query escaping and rejection of partial title matches.
+
+## Follow-up source and retrieval improvements
+
+The CERT-In directions dated 28 April 2022 and the final Telecom Cyber Security Rules, 2024 were located at their issuing authorities and indexed. Coverage now stands at **10 of 43 instruments and 1,924 passages**, with 33 unresolved entries. The measured JSON snapshot is updated. The CERT-In document uses a document-number/date/subject identity check because the catalogue display title differs from its printed subject. Search filters common query filler words, demotes contents pages and returns neighboring source chunks for context. Retrieval remains BM25, not semantic embeddings.

@@ -2,13 +2,18 @@
 // speaks it (Chatterbox clips, browser speech as fallback) and shows the official
 // text it relied on. Untrusted text is only ever set through textContent.
 import { el, fetchJson, formatDate, hostOf, humanLabel, safeLink } from './common.js';
-import { selectBestSpeechVoice } from './voiceSelector.js';
+import { selectPreferredVoice, normaliseSpeechRate, isBannedRoboticVoice, voiceProfile } from './voiceSelector.js';
 import { createCasesView } from './cases.js';
 
 const form = document.getElementById('ask-form');
 const question = document.getElementById('question');
 const teachButton = document.getElementById('teach');
 const stopButton = document.getElementById('stop');
+const narrator = document.getElementById('narrator');
+const speechRate = document.getElementById('speech-rate');
+const voiceNote = document.getElementById('voice-note');
+let storedNarrator = 'auto';
+try { storedNarrator = localStorage.getItem('lawbuddy.narrator') || 'auto'; speechRate.value = localStorage.getItem('lawbuddy.speech-rate') || '0.95'; } catch {}
 const voiceToggle = document.getElementById('voice');
 const answer = document.getElementById('answer');
 const statusLine = document.getElementById('status');
@@ -44,6 +49,7 @@ const setStatus = (text) => {
 const setBusy = (busy) => {
   streaming = busy;
   teachButton.disabled = busy;
+  document.getElementById('voice-preview').disabled = busy;
   stopButton.hidden = !busy && !voice.playing;
 };
 
@@ -61,6 +67,8 @@ const voice = {
   generation: 0,
   audio: null,
   objectUrl: null,
+  speechResolve: null,
+  clipResolve: null,
 
   reset() {
     this.generation += 1;
@@ -72,9 +80,11 @@ const voice = {
       this.audio.pause();
       this.audio = null;
     }
+    this.clipResolve?.(); this.clipResolve = null;
     if (this.objectUrl) URL.revokeObjectURL(this.objectUrl);
     this.objectUrl = null;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    this.speechResolve?.(); this.speechResolve = null;
   },
 
   enqueue(item) {
@@ -95,7 +105,7 @@ const voice = {
     this.playing = true;
     stopButton.hidden = false;
     try {
-      if (item.fileName) await this.playClip(item.fileName, generation);
+      if (item.fileName && narrator.value === 'auto') await this.playClip(item.fileName, generation);
       else await this.speak(item.text);
     } catch {
       // A clip that cannot be fetched or played is read by the browser instead.
@@ -113,11 +123,15 @@ const voice = {
     if (generation !== this.generation) return;
     this.objectUrl = URL.createObjectURL(blob);
     this.audio = new Audio(this.objectUrl);
+    this.audio.playbackRate = normaliseSpeechRate(speechRate.value);
     await new Promise((resolve, reject) => {
+      this.clipResolve = resolve;
       this.audio.onended = resolve;
       this.audio.onerror = reject;
       this.audio.play().catch(reject);
     });
+    if (generation !== this.generation) return;
+    this.clipResolve = null;
     URL.revokeObjectURL(this.objectUrl);
     this.objectUrl = null;
     this.audio = null;
@@ -131,23 +145,55 @@ const voice = {
       }
       // Never let the browser fall back to its default voice (often Daniel on macOS):
       // only an allowed voice from the shared selector may read the answer.
-      const chosen = selectBestSpeechVoice(window.speechSynthesis.getVoices());
+      const chosen = selectPreferredVoice(window.speechSynthesis.getVoices(), narrator.value);
       if (!chosen) {
+        voiceNote.textContent = 'This voice is not available on this device. Choose another installed voice or Automatic.';
         resolve();
         return;
       }
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.voice = chosen;
       utterance.lang = chosen.lang;
-      utterance.onend = resolve;
-      utterance.onerror = resolve;
+      utterance.rate = normaliseSpeechRate(speechRate.value);
+      voiceNote.textContent = `Speaking with ${chosen.name}.`;
+      const finish = () => { if (this.speechResolve === finish) this.speechResolve = null; resolve(); };
+      this.speechResolve = finish;
+      utterance.onend = finish;
+      utterance.onerror = finish;
       window.speechSynthesis.speak(utterance);
     });
   },
 };
 
 // Chromium loads the voice list lazily; asking once at start-up means it is ready for the first fallback.
-if ('speechSynthesis' in window) window.speechSynthesis.getVoices();
+const refreshVoices = () => {
+  const voices = window.speechSynthesis?.getVoices() || [];
+  const selected = narrator.value || storedNarrator;
+  for (const option of [...narrator.options]) if (option.value.startsWith('voice:')) option.remove();
+  for (const v of voices.filter((v) => /^en(?:-|$)/i.test(v.lang) && (!isBannedRoboticVoice(v.name) || voiceProfile(v) === 'male'))) {
+    const option = document.createElement('option'); option.value = `voice:${v.voiceURI}`; option.textContent = `${v.name} · ${v.lang}`; narrator.append(option);
+  }
+  for (const profile of ['female', 'male']) narrator.querySelector(`option[value="${profile}"]`).disabled = !selectPreferredVoice(voices, profile);
+  const wanted = storedNarrator || selected;
+  if (![...narrator.options].some((o) => o.value === wanted) && wanted.startsWith('voice:')) { const missing = document.createElement('option'); missing.value = wanted; missing.textContent = 'Saved voice · unavailable'; missing.disabled = true; narrator.append(missing); }
+  if ([...narrator.options].some((o) => o.value === wanted)) narrator.value = wanted;
+  if (wanted !== 'auto' && !selectPreferredVoice(voices, wanted)) voiceNote.textContent = 'Your saved voice is not available yet. Choose an installed voice or Automatic.';
+  else voiceNote.textContent = wanted === 'auto' ? 'Automatic uses the configured server narrator; preview uses browser fallback.' : `Ready: ${selectPreferredVoice(voices, wanted).name}.`;
+};
+if ('speechSynthesis' in window) { window.speechSynthesis.addEventListener('voiceschanged', refreshVoices); }
+refreshVoices();
+narrator.addEventListener('change', () => {
+  voice.reset(); storedNarrator = narrator.value;
+  try { localStorage.setItem('lawbuddy.narrator', narrator.value); } catch {}
+  voiceNote.textContent = narrator.value === 'auto' ? 'Using the configured server voice; browser speech is the fallback.' : 'Using your selected device voice for answers and fallback audio.';
+});
+speechRate.addEventListener('change', () => { voice.reset(); try { localStorage.setItem('lawbuddy.speech-rate', speechRate.value); } catch {} });
+document.getElementById('voice-preview').addEventListener('click', () => {
+  voice.reset();
+  if (narrator.value === 'auto') voiceNote.textContent = 'Preview uses the browser fallback. The server narrator is heard during an answer.';
+  const generation = voice.generation; voice.playing = true; stopButton.hidden = false;
+  voice.speak('Welcome to LawBuddy. Let us read the law carefully, one provision at a time.').finally(() => { if (generation === voice.generation) { voice.playing = false; stopButton.hidden = !streaming; } });
+});
 
 const splitSentences = (text) =>
   (String(text).match(/[^.!?]+[.!?]+["'’”)\]]*\s*|[^.!?]+$/g) || []).map((sentence) => sentence.trim()).filter(Boolean);

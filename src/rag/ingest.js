@@ -9,10 +9,11 @@ const extractPdfText = async (file) => {
 import { findSourceForUrl } from '../sources/registry.js';
 import { decodeEntities } from '../parse/html.js';
 import { digest } from './corpus.js';
-const ALTERNATIVES = { CA2013: ['https://nclat.nic.in/sites/default/files/2022-04/the-companies-act-2013.pdf'], CPC1908: ['https://aphc.gov.in/docs/6_20241130055515.pdf'], PATENTS1970: ['https://ipindia.gov.in/frontend/pdf/patents/1_113_1_The_Patents_Act__1970___incorporating_all_amendments_till_1-08-2024.pdf'] };
+const ALTERNATIVES = { CERT2022: ['https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf'], TELCYBER2024: ['https://eservices.dot.gov.in/cyber-security/public/uploads/circulars/Telecommunications%20%28Telecom%20Cyber%20Security%29%20Rules%2C%202024.pdf-1751285968.pdf'], CA2013: ['https://nclat.nic.in/sites/default/files/2022-04/the-companies-act-2013.pdf'], CPC1908: ['https://aphc.gov.in/docs/6_20241130055515.pdf'], PATENTS1970: ['https://ipindia.gov.in/frontend/pdf/patents/1_113_1_The_Patents_Act__1970___incorporating_all_amendments_till_1-08-2024.pdf'] };
 const normal = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g,' ');
 export const matchesInstrument = (entry, pages) => {
   const header = normal(pages.slice(0, 8).flatMap((p) => p.lines.map((l) => typeof l === 'string' ? l : l.text)).join(' '));
+  if (entry.id === 'CERT2022') return ['20 3 2022 cert in', '28 april 2022', 'directions under sub section 6 of section 70b'].every((anchor) => header.replace(/ +/g,' ').includes(anchor));
   const title = normal(entry.title).trim().replace(/^the /,'').replace(/ +/g,' ');
   return header.replace(/ +/g,' ').includes(title);
 };
