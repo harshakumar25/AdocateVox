@@ -20,7 +20,7 @@ export const reviewBlocks = (report) => {
   }
   if (report.caseCheck) {
     heading('IDENTITY STATUS'); paragraph(report.caseCheck.message);
-    for (const missing of report.caseCheck.missing || []) list(`Missing: ${missing}`);
+    if (!report.discovery) for (const missing of report.caseCheck.missing || []) list(`Missing: ${missing}`);
     heading('QUERY AS UNDERSTOOD');
     paragraph(`Task: case analysis\nCaption: ${report.task?.caption || 'not supplied'}\nYear: ${report.task?.year || 'not supplied'}\nCourt: ${report.task?.court || 'not supplied'}\nCitation: ${report.task?.citation || 'not supplied'}\nRequested sections: ${(report.task?.requestedSections || []).join(', ') || 'case analysis'}`);
     heading('WHAT IS NEEDED TO CONTINUE'); report.nextSteps.forEach(list);
@@ -42,6 +42,7 @@ export const reviewBlocks = (report) => {
     if (report.coverageGaps?.length) { heading('INDEX COVERAGE'); report.coverageGaps.forEach(list); }
     if (report.counselChecks?.length) { heading('ITEMS FOR COUNSEL TO VERIFY'); report.counselChecks.forEach(list); }
   }
+  if (report.discovery?.log?.length) { heading('AUTOMATIC RESEARCH'); for (const item of report.discovery.log) paragraph(JSON.stringify(item)); }
   if (report.quality) {
     heading('OUTPUT CHECKS'); paragraph(`Style and source overlap: ${report.quality.pass ? 'PASS' : 'FAIL'}. Long dashes: ${report.quality.dash_hits}. Banned phrases: ${report.quality.banned_phrases.join(', ') || 'none'}. Six-word overlap: ${report.quality.overlap_pct}% (limit ${100 * report.quality.maxOverlap}%). These checks do not establish legal accuracy or an external similarity score.`);
   }
@@ -67,7 +68,7 @@ export const reviewBlocks = (report) => {
 };
 
 export const exportBlockers = (report) => {
-  if (!report?.ok || report.caseCheck) return ['Confirm the case identity and supply the judgment before preparing a submission write-up.'];
+  if (!report?.ok || report.caseCheck) return [report?.discovery ? report.discovery.message : 'Confirm the case identity and supply the judgment before preparing a submission write-up.'];
   const blockers = [];
   if (!Object.values(report.sections || {}).flat().length) blockers.push('No supported legal write-up has been produced.');
   if (!report.quality?.pass) blockers.push('Resolve the failed output quality checks before exporting the write-up.');
@@ -113,7 +114,7 @@ export const reportBlocks = (report) => {
   for (const [id, number] of refs) {
     const card = report.cards?.find((c) => c.id === id);
     const source = report.sources?.find((s) => s.id === card?.sourceId);
-    paragraph(`[${number}] ${source?.title || 'Reference unavailable'}, ${source?.kind === 'statute' ? 'provision' : 'paragraph'} ${card?.para || 'unavailable'}.${source?.url ? `\n${source.url}` : ''}`);
+    paragraph(`[${number}] ${source?.title || 'Reference unavailable'}, ${source?.kind === 'statute' ? 'provision' : /^p\d+\./.test(card?.para || '') ? 'PDF page/passage' : 'paragraph'} ${card?.para || 'unavailable'}.${source?.url ? `\n${source.url}` : ''}`);
   }
   for (const row of report.temporal || []) paragraph(`Statutory correspondence and commencement:\n${row.oldSource}\n${row.newSource}\n${row.correspondenceSource}\n${row.commencementSource}`);
   return blocks;

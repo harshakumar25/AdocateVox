@@ -9,6 +9,8 @@ const submit = document.getElementById('report-submit');
 const exportButton = document.getElementById('report-export');
 const review = document.getElementById('report-review');
 const reviewBody = document.getElementById('report-review-body');
+const caseChoices = document.getElementById('report-case-choices');
+let selectedCaseId = null;
 const reviewNotice = document.getElementById('report-review-notice');
 let currentReport = null; let revision = 0;
 form.elements.asOf.value = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -45,16 +47,30 @@ const renderBlocks = (parent, blocks) => {
   }
 };
 const render = (report) => {
+  caseChoices.replaceChildren(); caseChoices.hidden = true;
+  if (report.discovery?.status === 'choose-case') {
+    caseChoices.hidden = false;
+    caseChoices.append(el('h3', 'Which judgment do you mean?'));
+    const more = el('details', undefined, 'report-intake');
+    more.append(el('summary', `More matching judgments (${Math.max(0, report.discovery.candidates.length - 5)})`));
+    for (const [index, candidate] of report.discovery.candidates.entries()) {
+      const button = el('button', `${candidate.title} · ${candidate.court} · ${candidate.decidedOn || ''} · ${candidate.caseNo || candidate.citations.join(', ')}`, 'button ghost');
+      button.type = 'button';
+      button.addEventListener('click', () => { selectedCaseId = candidate.id; form.requestSubmit(); });
+      (index < 5 ? caseChoices : more).append(button);
+    }
+    if (report.discovery.candidates.length > 5) caseChoices.append(more);
+  }
   const blocks = reportBlocks(report); const blockers = exportBlockers(report);
   renderBlocks(output, blocks); renderBlocks(reviewBody, reviewBlocks(report));
   reviewNotice.textContent = blockers.join(' '); reviewNotice.hidden = !blockers.length;
-  review.hidden = false; review.open = blockers.length > 0;
+  review.hidden = false; review.open = blockers.length > 0 && report.discovery?.status !== 'choose-case';
   empty.hidden = blocks.length > 0;
   empty.textContent = blocks.length ? '' : 'The legal write-up will appear after the issues shown in the review panel are resolved.';
   output.hidden = !blocks.length; exportButton.disabled = blockers.length > 0;
   exportButton.textContent = 'Download write-up';
 };
-form.addEventListener('input', () => { revision++; currentReport = null; exportButton.disabled = true; });
+form.addEventListener('input', () => { selectedCaseId = null; caseChoices.hidden = true; revision++; currentReport = null; exportButton.disabled = true; });
 form.elements.judgmentFile.addEventListener('change', async () => {
   const file = form.elements.judgmentFile.files[0]; if (!file) return;
   if (file.size > 800000 || !/\.txt$/i.test(file.name)) { error.textContent = 'Use a UTF-8 .txt judgment of at most 800 KB with paragraph numbers.'; error.hidden = false; return; }
@@ -64,12 +80,13 @@ form.elements.judgmentFile.addEventListener('change', async () => {
   status.textContent = 'Judgment text loaded locally. Review its identity fields before generating.';
 });
 form.addEventListener('submit', async (event) => {
-  event.preventDefault(); currentReport = null; output.hidden = true; review.hidden = true; reviewNotice.hidden = true; exportButton.disabled = true; error.hidden = true;
+  event.preventDefault(); currentReport = null; output.hidden = true; caseChoices.hidden = true; review.hidden = true; reviewNotice.hidden = true; exportButton.disabled = true; error.hidden = true;
   const requestedRevision = revision;
-  submit.disabled = true; status.textContent = 'Checking identity, reading paragraphs, drafting and verifying. Local runs may take several minutes.';
+  submit.disabled = true; status.textContent = 'Researching the case, downloading available judgments, then drafting and checking sources. This may take several minutes.';
   const fields = new FormData(form);
   const input = Object.fromEntries(['prompt', 'type', 'jurisdiction', 'asOf', 'provider', 'judgmentText', 'judgmentUrl', 'judgmentSnapshotDate', 'facts'].map((key) => [key, fields.get(key) || '']));
   input.online = fields.has('online');
+  if (selectedCaseId) input.selectedCaseId = selectedCaseId;
   input.caseIdentity = Object.fromEntries(['caption', 'court', 'citation', 'caseNo', 'decisionDate'].map((key) => [key, fields.get(key) || '']));
   for (const key of ['verifierProvider', 'compareProvider', 'resumeRunId']) if (fields.get(key)) input[key] = fields.get(key);
   try {
@@ -78,7 +95,7 @@ form.addEventListener('submit', async (event) => {
     if (!response.ok || !report.ok) throw new Error(`${report.error || 'Report could not be prepared.'}${report.runId ? ` Resume ID: ${report.runId}` : ''}`);
     if (requestedRevision !== revision) { status.textContent = 'The request changed during generation. Submit the revised request to enable export.'; return; }
     currentReport = report; render(report);
-    status.textContent = report.caseCheck ? 'Case not confirmed. No case analysis generated.' : report.systemStatus || (report.quality?.pass ? 'Evidence checks and output gates completed.' : 'Output gate failed. Review the visible banner.');
+    status.textContent = report.caseCheck ? (report.discovery?.message || 'Case not confirmed. No case analysis generated.') : report.systemStatus || (report.quality?.pass ? 'Evidence checks and output gates completed.' : 'Output gate failed. Review the visible banner.');
   } catch (cause) { error.textContent = cause.message; error.hidden = false; status.textContent = 'Generation stopped.'; }
   finally { submit.disabled = false; }
 });

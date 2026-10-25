@@ -166,6 +166,7 @@ export const handleLawBuddyApiRoute = async (req, res, {
   prepareBrief = prepareCaseBrief,
   reportGenerate = generateReportText,
   reportOptions = {},
+  reportDiscover,
 }) => {
   const isUpload = req.method === 'POST' && pathname === '/lawbuddy/api/copy-check';
   const isReport = req.method === 'POST' && pathname === '/lawbuddy/api/reports';
@@ -200,7 +201,7 @@ export const handleLawBuddyApiRoute = async (req, res, {
     else {
       let input;
       try { input = JSON.parse(body.toString('utf8')); } catch { input = null; }
-      result = input && typeof input === 'object' ? await createLegalReport({ store, input,
+      result = input && typeof input === 'object' ? await createLegalReport({ store, input, fetcher: fetcherFor(store), discoverCase: reportDiscover,
         generate: (args) => reportGenerate({ ...args, options: reportOptions }),
         options: { ...reportOptions, checkpointDir: reportOptions.REPORT_CHECKPOINT_DIR || undefined },
       }) : { ok: false, status: 400, error: 'Send a JSON report request.' };

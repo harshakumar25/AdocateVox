@@ -1794,3 +1794,5 @@ a.card:hover {
 .report-alert { padding: 12px 14px; border-left: 4px solid #bd7600; background: rgba(189, 118, 0, .10); }
 .report-section li { margin-bottom: 10px; }
 @media print { .report-page .practice-input, .report-page #report-export { display: none !important; } .report-page .practice-layout { display: block; } .report-section, .report-source { break-inside: avoid; } }
+
+#report-case-choices .button { display: block; width: 100%; text-align: left; white-space: normal; margin: .65rem 0; line-height: 1.5; }

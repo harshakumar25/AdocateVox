@@ -12,7 +12,7 @@ export const identifyReportTask = (prompt, input = {}) => {
   const queryMatch = CAPTION.exec(prompt);
   const requestedSections = ['judgment', 'facts', 'issues', 'reviews', 'analysis', 'reasoning', 'holding', 'order'].filter((s) =>
     new RegExp(s === 'judgment' ? 'judg(?:e)?ment' : `\\b${s}\\b`, 'i').test(prompt));
-  if (!match && !CASE_WORK.test(prompt) && !input.judgmentText && input.type !== 'case-analysis') return { kind: 'general', taskType: input.type || 'memo', suppliedFacts: String(input.facts || '') };
+  if (!match && !citations.length && !CASE_WORK.test(prompt) && !input.judgmentText && input.type !== 'case-analysis') return { kind: 'general', taskType: input.type || 'memo', suppliedFacts: String(input.facts || '') };
   const partyA = match?.[1].split(/[:;\n]/).at(-1).replace(/^\s*(?:(?:analyse|analyze|explain|review|landmark)\s+)*(?:case\s+)?/i, '').trim() || '';
   const partyB = match?.[2].split(STOP)[0].trim() || '';
   const year = /\(\s*((?:19|20)\d{2})\s*\)/.exec(prompt)?.[1]

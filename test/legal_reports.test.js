@@ -51,12 +51,12 @@ test('ambiguous audited caption and nonexistent case stop without model calls, s
   for (const prompt of ['Landmark case: Subhash v. State (2017), include judgement, facts, issues, reviews and analysis', 'Analyse Orion Nemo v. State of Example (2017): judgment and facts']) {
     const report = await createLegalReport({ store, input: { prompt, provider: 'ollama', asOf: '2026-10-24' }, options,
       generate: () => { throw new Error('model must not run'); }, retrieveSources: () => { throw new Error('statutes must not be retrieved'); } });
-    assert.equal(report.status, 'identity-check-required'); assert.equal(report.sources.length, 0);
-    assert.ok(report.caseCheck.missing.includes('judgment text'));
-    const text = reviewToText(report); assert.match(text, /Nothing in this memo describes/);
+    assert.equal(report.status, 'research-incomplete'); assert.equal(report.sources.length, 0);
+    assert.deepEqual(report.caseCheck.missing, []); assert.ok(report.discovery);
+    const text = reviewToText(report); assert.match(text, /Automatic research/);
     assert.doesNotMatch(text, /BNSS|329|Article 346/);
     assert.equal(reportToText(report), '');
-    assert.throws(() => buildReportDocx(report), /Confirm the case identity/);
+    assert.throws(() => buildReportDocx(report), /Automatic research/);
   }
 }));
 
@@ -192,7 +192,17 @@ test('HTTP route uses numeric status while preserving report state in the respon
   const req = Readable.from([Buffer.from(JSON.stringify(input))]); req.method = 'POST'; req.headers = {};
   let result;
   await handleLawBuddyApiRoute(req, {}, { pathname: '/lawbuddy/api/reports', parsedUrl: new URL('http://localhost/lawbuddy/api/reports'),
-    legalLibrary: { get: async () => store }, reportGenerate: () => { throw new Error('no model'); },
+    legalLibrary: { get: async () => store }, reportDiscover: async () => ({ status: 'research-incomplete', candidates: [], log: [], message: 'Automatic research found no matching case.' }), reportGenerate: () => { throw new Error('no model'); },
     sendJson: (_res, status, body) => { result = { status, body }; } });
-  assert.equal(result.status, 200); assert.equal(result.body.status, 'identity-check-required');
+  assert.equal(result.status, 200); assert.equal(result.body.status, 'research-incomplete');
+}));
+
+ test('prompt-only discovery feeds the located judgment into the complete report pipeline', () => withStore(async (store) => {
+  const report = await createLegalReport({ store, input: { prompt: caseInput.prompt, provider: 'groq', asOf: caseInput.asOf }, generate: model, options,
+    discoverCase: async () => ({ status: 'located', text: judgment, identity: caseInput.caseIdentity,
+      paragraphs: judgment.split(/\n(?=\d+\.)/).slice(1).map((text, i) => ({ para: String(i + 1), text: text.replace(/^\d+\.\s*/, '').trim() })),
+      url: 'https://example.test/fixture.pdf', authority: 'court-record-mirror', anchor: 'PDF page/passage', log: [] }) });
+  assert.equal(report.ok, true, report.error); assert.equal(report.status, 'working-report');
+  assert.ok(report.sections.holding.length); assert.equal(report.sources[0].authority, 'court-record-mirror');
+  assert.doesNotMatch(reportToText(report), /Missing:|Run ID|AUTOMATIC RESEARCH/);
 }));

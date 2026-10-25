@@ -6,13 +6,13 @@ Updated 25 October 2026.
 
 The audited request, “Subhash v. State (2017)”, entered an unscoped any-term statute search. An unidentified judgment was then described using unrelated statutory sources. Valid source IDs did not establish support for the model's assertions. An empty model response also promoted the retrieved provisions to “Applicable law”.
 
-Reports now identify case work before retrieval. Court, decision date, citation or case number, caption and numbered judgment text are required. Parties and identifiers must match the supplied header; a separate model stage must return matching header quotations. Missing or mismatched identity yields a status in the review panel and no case write-up. Candidates from the existing Supreme Court index are unconfirmed leads. A supplied judgment is not authenticated merely because its header matches.
+Reports now identify case work before retrieval. Prompt-only case research uses the Supreme Court index and registered court-record mirror to locate metadata and download the PDF. A missing year-specific match triggers one bounded metadata refresh. Court, decision date, citation or case number, caption and judgment text are resolved internally; users need not supply them. Multiple matches require only a case choice. Parties and identifiers must match the supplied header; a separate model stage must return matching header quotations. Missing or mismatched identity yields a status in the review panel and no case write-up. Retrieved PDFs must match catalogue parties, a citation/case number and decision date before analysis. Court comes from collection metadata. OCR whitespace and citation punctuation are normalized only for matching, never to rewrite source quotations. A supplied judgment is not authenticated merely because its header matches.
 
 The Reports document and Word export contain **only legal prose and references**: case details, facts, procedural history, issues, holding, reasoning/arguments, order, available later treatment, analysis, statutory framework and numbered references. Empty sections, model settings, prompts, hashes, quality scores, debug information and counsel checklists are excluded. The separate evidence/validation panel retains these details. Clean export is disabled for unresolved identity, no supported sentences, failed quality checks, backend disagreement or missing core case sections. It is not an automated court-filing approval.
 
 ## Pipeline
 
-1. Deterministic task parsing and identity checks; short identity confirmation call with literal header evidence.
+1. Deterministic task parsing, automatic case discovery and PDF identity matching; supplied texts use a short identity confirmation call with literal header evidence.
 2. Supplied numbered judgment paragraphs are grouped into about 1,200-word chunks. Paragraphs are never cut mid-sentence to meet a character limit. Oversize prompts stop with a context-budget error.
 3. Extract typed quote cards using first/last five-word anchors and paragraph numbers. Precomputed sentence anchors help small models count reliably. Edge punctuation is ignored when locating anchors, but the returned quotation is cut from the **original text**, preserving every character. Ambiguous spans and invalid source types are rejected.
 4. Draft each section only from allowed card types. Default drafts per section: Ollama 5, Groq 1, Grok 1. Each sentence has one evidence card.
@@ -26,7 +26,7 @@ The report-specific concordance contains only CrPC s.152 to BNSS s.171. Its offi
 
 ## Inputs and configuration
 
-Use `/lawbuddy/reports`. Open “Case analysis: supply the judgment and identity”, enter header fields, and paste numbered text or load a UTF-8 `.txt` file. PDF/OCR ingestion is not implemented in this report intake. Files load into the browser first; generation sends the material to the explicitly selected providers. Additional commentary, later citing judgments and statutes can be supplied through the API's `supportingSources` array (`kind`, `title`, `text`, `url`, `snapshotDate`, optional `label` and `version`). Later judgments and commentary need paragraph numbers. The report pipeline does not scrape judgment links.
+Use `/lawbuddy/reports`. Enter a case name or citation and generate. The app downloads registered matching PDFs, reuses cached copies and extracts page-linked passages automatically. Uploading a PDF is not implemented; the optional intake accepts numbered text or a UTF-8 `.txt` file. Files load into the browser first; generation sends the material to the explicitly selected providers. Additional commentary, later citing judgments and statutes can be supplied through the API's `supportingSources` array (`kind`, `title`, `text`, `url`, `snapshotDate`, optional `label` and `version`). Later judgments and commentary need paragraph numbers. The report pipeline does not fetch arbitrary user-provided judgment links. Automatic coverage currently follows the Supreme Court collection; it is not a general High Court or all-web search. If no matching source is available, the result explains the coverage gap instead of asking for mandatory court/date/citation fields. No synthetic court paragraph numbers are created: retrieved references use PDF page/passage identifiers.
 
 `src/reports/config.json` controls phrase list, overlap limit (0.10), shingle length (6), repair rounds (5), relevance floor (0.65), consensus similarity (0.55), disagreement threshold (0.40), chunk/quote/card/claim limits, draft counts, temperatures, context and output budgets. Temperatures: 0 for identity/extraction/relevance/verification, 0.5 for drafting, 0.2 for repair. Default seed: 7. Ollama context: 16,384; local output reserve: 2,048 tokens; cloud output limit: 6,000.
 
@@ -49,7 +49,7 @@ On 25 October 2026, all 181 tests and JavaScript syntax checks passed. Live Groq
 ## Files
 
 - `PLAN.md`: implementation sequence.
-- `src/reports/task.js`, `report.js`: task identity and orchestration.
+- `src/reports/discovery.js`, `task.js`, `report.js`: automatic retrieval, PDF identity checks and orchestration.
 - `src/reports/cards.js`, `pipeline.js`, `sources.js`: source selection, quote cards, section drafts, verification, consensus, repair and comparison.
 - `src/reports/config.json`, `config.js`, `quality.js`, `json.js`: configuration, deterministic output gates and schema validation.
 - `src/reports/provider.js`, `stages.js`: model calls, context limits, retries, provenance and checkpoints.
@@ -61,4 +61,10 @@ On 25 October 2026, all 181 tests and JavaScript syntax checks passed. Live Groq
 - `test/legal_reports.test.js`, `legal_report_gates.test.js`, fictional fixture: regression coverage.
 - `README.md`, `docs/LEGAL_REPORTS_MVP.md`, this document: usage, limitations and architecture.
 
-Remaining assurance work: advocate-reviewed proposition/paragraph evaluations; independent court-source authentication; current-edition coverage; semantic contradiction checking across all sections; broader reviewed concordance; document import/OCR; optional commentary intake UI; chamber-grade access control and encrypted retention. The verifier is a model and can still misread a source. Passing these checks is not a legal accuracy guarantee.
+Remaining assurance work: advocate-reviewed proposition/paragraph evaluations; independent court-source authentication; current-edition coverage; semantic contradiction checking across all sections; broader reviewed concordance; user PDF import and OCR fallback; optional commentary intake UI; chamber-grade access control and encrypted retention. The verifier is a model and can still misread a source. Passing these checks is not a legal accuracy guarantee.
+
+## Automatic discovery verification
+
+Prompt-only discovery was tested against real citation `2017 INSC 716`: the application retrieved a four-page court-record PDF, extracted 11 page-linked passages and matched its parties, SCR citation and decision date. This is a retrieval/identity smoke test, not a claim that the complete generated report passed every output gate. Automated tests cover downloads, cached PDFs, metadata refresh, partial-name rejection, ambiguous choices, invalid selections, citation-only requests and prompt-only pipeline integration.
+
+Automatic-discovery follow-up validation: 189 tests pass, with syntax and whitespace checks clean. Browser testing confirmed that a short case caption generates case choices without court, date, citation or judgment inputs.
