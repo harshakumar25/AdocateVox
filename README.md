@@ -25,7 +25,7 @@ For an incident review of the cyber-testing question, the retrieval failure chai
 ## Architecture
 
 * **Zero External npm Dependencies**: Built with Node.js built-ins (`node:sqlite`, `node:http`, `node:crypto`, `node:fs`, `node:test`).
-* **Storage**: Local SQLite with FTS5 virtual tables and BM25 ranking.
+* **Storage**: Local SQLite with FTS5 virtual tables and BM25 ranking. The separate practice RAG corpus stores page-linked source snapshots and coverage failures; it does not replace date-verified provision evidence. See [practice RAG architecture](docs/PRACTICE_RAG.md).
 * **Instrument identity**: One canonical record per Indian Act, rule, direction, circular or technical standard; topics point to records rather than duplicating them. `parentId` links subordinate instruments to their enabling Act.
 * **Import boundary**: The current Gazette parser is specific to BNS/BNSS/BSA. Other instruments are metadata and official-source leads until their editions, provision completeness and commencement dates pass review. A downloaded PDF or draft amendment alone does not create operative law.
 * **Extraction Workers**: Python worker (`pdfplumber==0.11.4`) for structured PDF layout parsing.
@@ -100,3 +100,7 @@ MIT
 Run `npm run dev`, open `/lawbuddy/reports`, enter the research question, case name or citation, and click Generate report. Court details and PDFs are researched automatically from the available Supreme Court collection. The optional intake accepts material you already have. Select the model before submitting; cloud providers receive the supplied material. Word export unlocks only after required evidence and output checks pass.
 
 Run `npm test` for regressions and `python3 scripts/quality_gates.py memo.txt source1.txt source2.txt` for standalone style/source-overlap checks. Configuration, resume instructions, provider limits and the full changed-file inventory are in [Reports repair](docs/REPORTS_REPAIR.md).
+
+### Broader practice full-text indexing
+
+Run `node scripts/index-practice-rag.mjs` to process every Indian catalogue instrument. Use `--recheck` to revalidate cached PDFs, or `--force` to fetch again. Search full-text passages in the homepage practice index, or through `/lawbuddy/api/rag/search`. Coverage and source failures are available at `/lawbuddy/api/rag/coverage`. This is BM25-based RAG retrieval, not vector embeddings; downloaded snapshots remain legally unreviewed.

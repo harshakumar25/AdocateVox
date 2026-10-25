@@ -53,8 +53,9 @@ const catalogCard = (item) => el('article', { className: 'card' }, [
     ? `${item.indexedSections} provisions indexed as of ${catalogAsOf}`
     : item.status === 'indexed-historical'
       ? `${item.historicalIndexedSections} provisions reviewed through ${item.reviewedThrough} · current text not verified`
-      : 'Official source identified · text not indexed' }),
+      : item.rag?.chunks ? 'Source text searchable · provision review pending' : 'Official source identified · text not indexed' }),
   el('h3', { text: item.title }),
+  item.rag?.chunks ? el('p', { text: `${item.rag.chunks} full-text RAG passages · source snapshot, legal currency not reviewed` }) : null,
   el('p', { text: `${item.instrumentType}${item.actNumber ? ` · ${item.actNumber}` : ''}${item.parentId ? ` · under ${item.parentId}` : ''} · ${item.topics.map((topic) => topic.replace(/-/g, ' ')).join(' · ')}` }),
   item.note ? el('p', { className: 'research-caution', text: item.note }) : null,
   el('p', {}, [safeLink(item.indexedSourceUrl || item.historicalSourceUrl || item.sourceUrl, item.status === 'source-identified' ? 'Open official source' : 'Open reviewed source')]),
@@ -90,3 +91,21 @@ catalogForm.addEventListener('submit', (event) => { event.preventDefault(); load
 catalogTopic.addEventListener('change', loadCatalog);
 catalogMore.addEventListener('click', () => { catalogVisible += 12; showCatalog(); });
 loadCatalog();
+
+const ragForm = document.getElementById('rag-form');
+let ragRequest = 0;
+ragForm?.addEventListener('submit', async (event) => {
+  event.preventDefault(); const sequence = ++ragRequest;
+  const output = document.getElementById('rag-results');
+  output.textContent = 'Searching indexed source text…';
+  try {
+    const params = new URLSearchParams({q: document.getElementById('rag-query').value,topic: catalogTopic.value});
+    const {ok,body} = await fetchJson(`/lawbuddy/api/rag/search?${params}`);
+    if (sequence !== ragRequest) return;
+    if (!ok) throw new Error('Source search failed.');
+    output.replaceChildren(...(body.items.length ? body.items.map((hit) => el('article',{className:'card'},[
+      el('h3',{text:hit.title}),el('p',{text:hit.citation}),el('p',{text:hit.text}),
+      el('p',{className:'research-caution',text:hit.legalCurrency}), safeLink(hit.url,'Open source PDF'),
+    ])) : [el('p',{text:'No indexed passage matched. Source-only entries and unavailable documents are not search evidence.'})]));
+  } catch(error) {if(sequence === ragRequest) output.textContent=error.message;}
+});

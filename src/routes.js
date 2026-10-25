@@ -1,3 +1,4 @@
+import { openCorpus } from './rag/corpus.js';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -247,12 +248,22 @@ export const handleLawBuddyApiRoute = async (req, res, {
     result = searchLaw(store, parsedUrl.searchParams.get('q'), {
       act: parsedUrl.searchParams.get('act'), asOf: parsedUrl.searchParams.get('asOf') || undefined,
     });
+  } else if (pathname === '/lawbuddy/api/rag/search') {
+    const corpus = openCorpus();
+    try { result = { ok: true, mode: 'FTS5 BM25 source retrieval', items: corpus.search((parsedUrl.searchParams.get('q') || '').slice(0,2000), { topic: parsedUrl.searchParams.get('topic') || '', instrument: parsedUrl.searchParams.get('instrument') || '' }) }; } finally { corpus.close(); }
+  } else if (pathname === '/lawbuddy/api/rag/coverage') {
+    const corpus = openCorpus();
+    try { result = { ok: true, items: corpus.coverage() }; } finally { corpus.close(); }
   } else if (pathname === '/lawbuddy/api/catalog') {
     result = searchCatalog(store, {
       query: parsedUrl.searchParams.get('q') || '', topic: parsedUrl.searchParams.get('topic') || '',
       includeForeign: parsedUrl.searchParams.get('includeForeign') === '1',
       asOf: parsedUrl.searchParams.get('asOf') || undefined,
     });
+    if (result.ok) {
+      const corpus = openCorpus();
+      try { const coverage = new Map(corpus.coverage().map((row) => [row.id,row])); result.items = result.items.map((item) => ({...item, rag: coverage.get(item.id) || null})); } finally { corpus.close(); }
+    }
   } else if (pathname === '/lawbuddy/api/lookup') {
     result = lookupSection(store, parsedUrl.searchParams.get('act'), parsedUrl.searchParams.get('section'));
   } else if (pathname === '/lawbuddy/api/sync') {
