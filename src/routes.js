@@ -1,3 +1,4 @@
+import { synthesizeIndianVoice } from './speech/indianVoice.js';
 import { openCorpus } from './rag/corpus.js';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -169,6 +170,26 @@ export const handleLawBuddyApiRoute = async (req, res, {
   reportOptions = {},
   reportDiscover,
 }) => {
+  if (pathname === '/lawbuddy/api/speech' && ['GET', 'POST'].includes(req.method)) {
+    res.setHeader('Cache-Control', 'no-store');
+    if (req.method === 'GET') {
+      sendJson(res, 200, { configured: Boolean(process.env.SARVAM_API_KEY), provider: 'Sarvam', language: 'en-IN' }, req);
+    } else {
+      // This paid endpoint accepts same-origin JSON requests only.
+      let sameOrigin = false;
+      try { sameOrigin = new URL(req.headers.origin).host === req.headers.host; } catch {}
+      if (!sameOrigin || !String(req.headers['content-type']).startsWith('application/json')) {
+        sendJson(res, 403, { error: 'Use the LawBuddy voice controls.' }, req);
+        return true;
+      }
+      const body = await readBody(req, 16000);
+      let input;
+      try { input = body && JSON.parse(body.toString('utf8')); } catch {}
+      const result = body ? await synthesizeIndianVoice(input) : { status: 413, error: 'Speech request is too large.' };
+      sendJson(res, result.status, result, req);
+    }
+    return true;
+  }
   const isUpload = req.method === 'POST' && pathname === '/lawbuddy/api/copy-check';
   const isReport = req.method === 'POST' && pathname === '/lawbuddy/api/reports';
   const briefMatch = req.method === 'POST' ? /^\/lawbuddy\/api\/cases\/(\d+)\/brief$/.exec(pathname) : null;

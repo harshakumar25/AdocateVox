@@ -27,8 +27,8 @@ export function isBannedRoboticVoice(voiceName) {
 }
 
 /**
- * Scores a candidate SpeechSynthesisVoice based on audio fidelity, human warmth,
- * language, and naturalness. Returns a numeric score (-1000 for banned voices).
+ * Ranks installed voices by locale and advertised voice metadata.
+ * These heuristics cannot measure perceived naturalness. Returns a numeric score (-1000 for banned voices).
  */
 export function scoreSpeechVoice(voice) {
   if (!voice || !voice.name) return -1000;
@@ -41,7 +41,8 @@ export function scoreSpeechVoice(voice) {
   let score = 0;
 
   // 2. Language: prioritize English variants
-  if (lang.startsWith('en-us')) score += 140;
+  if (lang.startsWith('en-in')) score += 750;
+  else if (lang.startsWith('en-us')) score += 140;
   else if (lang.startsWith('en-gb')) score += 120;
   else if (lang.startsWith('en-ca') || lang.startsWith('en-au')) score += 110;
   else if (lang.startsWith('en')) score += 90;

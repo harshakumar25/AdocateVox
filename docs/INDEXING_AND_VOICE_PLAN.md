@@ -29,3 +29,37 @@ Teaching audio primarily plays Chatterbox clips delivered by the host applicatio
 - Fixed cancellation cleanup for speech promises and pending audio clips; unavailable saved voices do not silently change profile.
 - Browser checks confirmed Samantha for the female profile, Rishi for male, and persistence after reload on this machine. These are device capabilities, not a guarantee on every browser or an audio-quality listening assessment.
 - Server-side Chatterbox profile assets, disabling redundant synthesis for device-only playback, hybrid embeddings, full source completion and verified-current-law promotion remain outstanding.
+
+### Indian-English speech refinement (25 October 2026)
+
+Device selection now prioritises en-IN within the chosen profile. This affects
+selection, not the underlying OS voice quality. Unknown genders are not inferred.
+Removed the unsupported “soft female” quality claim; added natural pace (1×).
+
+An optional Sarvam Bulbul v3 adapter supplies Ishita (female) and Ratan (male),
+using en-IN, 24 kHz MP3 and provider-side pace without pitch manipulation or a
+second playback-speed adjustment. These voices are recommended for English in
+Sarvam's [v3 guide](https://docs.sarvam.ai/api/api-guides-tutorials/text-to-speech/bulbul-v3-best-practices).
+The [REST contract](https://docs.sarvam.ai/api-reference/text-to-speech/convert)
+is pinned to v3, rather than mixing v4 persona names with v3 speakers.
+
+Set SARVAM_API_KEY in the server environment (the development host reads
+../DOCVEX/.env), restart the server, then select an Indian cloud voice and enable
+“Allow selected Indian voices to send spoken text to Sarvam”. Never put the key
+in browser code. Consent is not persisted across reloads. Missing setup disables
+cloud choices. Device voices remain available. No cloud fallback occurs silently.
+
+POST /lawbuddy/api/speech limits text to 2500 characters and request bodies to
+16 KB, checks origin and JSON content type, bounds concurrency to three and uses
+a 30-second upstream timeout. Responses are no-store. The adapter does not log
+or persist text/audio. Provider retention is governed by the provider's terms.
+Long playback splits at whitespace; Stop aborts the client request and invalidates
+late audio, although a provider request already accepted may still complete.
+No local model download is needed. A key and provider usage charges are required.
+
+Validation: provider contract/error/consent tests and installed-voice preference
+tests pass. Neural audio has NOT been auditioned: this environment has no Sarvam
+key. Before claiming naturalness, compare both previews with Indian listeners,
+including Article 21, statutory names, dates, section numbers and mixed-language
+names. Server Chatterbox work may still be redundant when enabled in the host
+and a different narrator is selected; that separate host optimisation remains.

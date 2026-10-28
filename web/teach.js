@@ -11,9 +11,11 @@ const teachButton = document.getElementById('teach');
 const stopButton = document.getElementById('stop');
 const narrator = document.getElementById('narrator');
 const speechRate = document.getElementById('speech-rate');
+const cloudConsent = document.getElementById('cloud-speech-consent');
+let indianVoiceConfigured = false;
 const voiceNote = document.getElementById('voice-note');
 let storedNarrator = 'auto';
-try { storedNarrator = localStorage.getItem('lawbuddy.narrator') || 'auto'; speechRate.value = localStorage.getItem('lawbuddy.speech-rate') || '0.95'; } catch {}
+try { storedNarrator = localStorage.getItem('lawbuddy.narrator') || 'auto'; speechRate.value = localStorage.getItem('lawbuddy.speech-rate') || '1'; } catch {}
 const voiceToggle = document.getElementById('voice');
 const answer = document.getElementById('answer');
 const statusLine = document.getElementById('status');
@@ -67,10 +69,12 @@ const voice = {
   generation: 0,
   audio: null,
   objectUrl: null,
+  speechRequest: null,
   speechResolve: null,
   clipResolve: null,
 
   reset() {
+    this.speechRequest?.abort(); this.speechRequest = null;
     this.generation += 1;
     this.queue = [];
     this.playing = false;
@@ -137,7 +141,52 @@ const voice = {
     this.audio = null;
   },
 
+  async speakIndian(text) {
+    const generation = this.generation;
+    if (!cloudConsent.checked || !indianVoiceConfigured) {
+      voiceNote.textContent = indianVoiceConfigured ? 'Allow cloud speech above to use this Indian voice.' : 'Indian neural voices need server setup. Choose a device voice for now.';
+      this.queue = [];
+      return;
+    }
+    const request = new AbortController(); this.speechRequest = request;
+    try {
+      // Preserve every character; split long paragraphs at whitespace, not mid-word.
+      let remaining = String(text || '').trim();
+      while (remaining && generation === this.generation) {
+        let end = Math.min(2200, remaining.length);
+        if (end < remaining.length) { const space = remaining.lastIndexOf(' ', end); if (space > 1000) end = space; }
+        const segment = remaining.slice(0, end); remaining = remaining.slice(end).trimStart();
+        voiceNote.textContent = 'Preparing Indian-English audio…';
+        const response = await fetch('/lawbuddy/api/speech', {
+          method: 'POST', signal: request.signal, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: segment, voice: narrator.value, rate: normaliseSpeechRate(speechRate.value), cloudConsent: true }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Indian voice is unavailable.');
+        if (generation !== this.generation) return;
+        const bytes = Uint8Array.from(atob(result.audio), (c) => c.charCodeAt(0));
+        this.objectUrl = URL.createObjectURL(new Blob([bytes], { type: result.mime }));
+        this.audio = new Audio(this.objectUrl);
+        // Pace is synthesized by the provider; do not time-stretch the audio twice.
+        voiceNote.textContent = `Speaking with ${narrator.value === 'indian-female' ? 'Ishita' : 'Ratan'} · Indian English.`;
+        await new Promise((resolve, reject) => {
+          this.clipResolve = resolve;
+          this.audio.onended = resolve; this.audio.onerror = () => reject(new Error('Audio playback failed.'));
+          this.audio.play().catch(reject);
+        });
+        if (generation !== this.generation) return;
+        URL.revokeObjectURL(this.objectUrl); this.objectUrl = null; this.audio = null; this.clipResolve = null;
+      }
+    } catch (error) {
+      if (generation === this.generation) {
+        this.reset(); voiceNote.textContent = error.message || 'Indian voice unavailable. Choose a device voice.';
+        stopButton.hidden = !streaming;
+      }
+    } finally { if (this.speechRequest === request) this.speechRequest = null; }
+  },
+
   speak(text) {
+    if (narrator.value.startsWith('indian-')) return this.speakIndian(text);
     return new Promise((resolve) => {
       if (!text || !('speechSynthesis' in window)) {
         resolve();
@@ -177,7 +226,8 @@ const refreshVoices = () => {
   const wanted = storedNarrator || selected;
   if (![...narrator.options].some((o) => o.value === wanted) && wanted.startsWith('voice:')) { const missing = document.createElement('option'); missing.value = wanted; missing.textContent = 'Saved voice · unavailable'; missing.disabled = true; narrator.append(missing); }
   if ([...narrator.options].some((o) => o.value === wanted)) narrator.value = wanted;
-  if (wanted !== 'auto' && !selectPreferredVoice(voices, wanted)) voiceNote.textContent = 'Your saved voice is not available yet. Choose an installed voice or Automatic.';
+  if (wanted.startsWith('indian-')) voiceNote.textContent = indianVoiceConfigured ? 'Indian English via Sarvam. Enable cloud speech and preview to compare voices.' : 'Indian neural voices need SARVAM_API_KEY on the server; device voices work now.';
+  else if (wanted !== 'auto' && !selectPreferredVoice(voices, wanted)) voiceNote.textContent = 'Your saved voice is not available yet. Choose an installed voice or Automatic.';
   else voiceNote.textContent = wanted === 'auto' ? 'Automatic uses the configured server narrator; preview uses browser fallback.' : `Ready: ${selectPreferredVoice(voices, wanted).name}.`;
 };
 if ('speechSynthesis' in window) { window.speechSynthesis.addEventListener('voiceschanged', refreshVoices); }
@@ -185,8 +235,19 @@ refreshVoices();
 narrator.addEventListener('change', () => {
   voice.reset(); storedNarrator = narrator.value;
   try { localStorage.setItem('lawbuddy.narrator', narrator.value); } catch {}
+  if (narrator.value.startsWith('indian-')) { refreshVoices(); return; }
   voiceNote.textContent = narrator.value === 'auto' ? 'Using the configured server voice; browser speech is the fallback.' : 'Using your selected device voice for answers and fallback audio.';
 });
+cloudConsent.addEventListener('change', () => { voice.reset(); refreshVoices(); });
+fetch('/lawbuddy/api/speech').then((r) => r.ok ? r.json() : null).then((data) => {
+  indianVoiceConfigured = data?.configured === true;
+  for (const [value, name] of [['indian-female', 'Ishita'], ['indian-male', 'Ratan']]) {
+    const option = narrator.querySelector(`option[value="${value}"]`);
+    option.disabled = !indianVoiceConfigured;
+    option.textContent = `Indian English · ${name} (cloud${indianVoiceConfigured ? '' : ', setup required'})`;
+  }
+  refreshVoices();
+}).catch(() => {});
 speechRate.addEventListener('change', () => { voice.reset(); try { localStorage.setItem('lawbuddy.speech-rate', speechRate.value); } catch {} });
 document.getElementById('voice-preview').addEventListener('click', () => {
   voice.reset();

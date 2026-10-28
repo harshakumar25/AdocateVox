@@ -1796,3 +1796,13 @@ a.card:hover {
 @media print { .report-page .practice-input, .report-page #report-export { display: none !important; } .report-page .practice-layout { display: block; } .report-section, .report-source { break-inside: avoid; } }
 
 #report-case-choices .button { display: block; width: 100%; text-align: left; white-space: normal; margin: .65rem 0; line-height: 1.5; }
+
+/* Voice settings must wrap inside the teaching card, including long locale names. */
+.voice-controls { flex-wrap: wrap; min-width: 0; justify-content: flex-start; }
+.voice-controls .toggle { flex-basis: 100%; padding-left: 0; }
+.voice-field { display: flex; flex-direction: column; gap: 6px; flex: 1 1 160px; min-width: 0; }
+.voice-field label { color: var(--muted); font-size: .85rem; }
+.voice-field select { width: 100%; min-width: 0; padding: 9px; border: 1px solid var(--line, #ddd); border-radius: 8px; background: var(--paper, #fff); color: inherit; font: inherit; }
+.voice-controls .cloud-consent { flex-basis: 100%; display: flex; align-items: flex-start; gap: 8px; font-size: .85rem; line-height: 1.5; color: var(--muted); }
+.cloud-consent input { flex: 0 0 auto; margin-top: 4px; }
+.voice-controls #voice-note { flex-basis: 100%; margin: 0; color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }

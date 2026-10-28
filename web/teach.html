@@ -37,10 +37,11 @@
       <form class="ask" id="ask-form">
         <label class="visually-hidden" for="question">Your question</label>
         <textarea id="question" rows="2" maxlength="2000" required placeholder="Ask about an Article, a right or a section…"></textarea>
-        <div class="ask-actions">
+        <div class="ask-actions voice-controls">
           <label class="toggle"><input type="checkbox" id="voice" checked> Speak answers</label>
-          <label for="narrator">Narrator</label><select id="narrator"><option value="auto">Automatic · server voice</option><option value="female">Soft female · device voice</option><option value="male">Male · device voice</option></select>
-          <label for="speech-rate">Reading speed</label><select id="speech-rate"><option value="0.8">Slow</option><option value="0.95" selected>Relaxed</option><option value="1.1">Faster</option></select>
+          <div class="voice-field"><label for="narrator">Narrator</label><select id="narrator"><option value="auto">Automatic · server voice</option><option value="indian-female" disabled>Indian English · Ishita (cloud, setup required)</option><option value="indian-male" disabled>Indian English · Ratan (cloud, setup required)</option><option value="female">Female · device voice</option><option value="male">Male · device voice</option></select></div>
+          <div class="voice-field"><label for="speech-rate">Reading speed</label><select id="speech-rate"><option value="0.8">Slow</option><option value="0.95">Relaxed</option><option value="1" selected>Natural pace</option><option value="1.1">Faster</option></select></div>
+          <label class="cloud-consent"><input type="checkbox" id="cloud-speech-consent"> Allow selected Indian voices to send spoken text to Sarvam</label>
           <button id="voice-preview" type="button" class="button">Preview voice</button><p id="voice-note" role="status">Device voices depend on your browser. Automatic uses the configured server narrator.</p>
           <button class="button ghost" type="button" id="stop" hidden>Stop</button>
           <button class="button" type="submit" id="teach">Teach me</button>

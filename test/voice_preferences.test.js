@@ -14,3 +14,9 @@ test('voice language and rate preferences have predictable bounds',()=>{
  assert.equal(selectPreferredVoice([{...male,lang:'fr-FR'}],'male'),null);
  assert.equal(normaliseSpeechRate(10),1.3);assert.equal(normaliseSpeechRate(.1),.7);assert.equal(normaliseSpeechRate('bad'),.95);
 });
+test('Indian English is preferred over foreign device voices within the requested profile', () => {
+ const veena = { name: 'Veena', lang: 'en-IN', voiceURI: 'veena' };
+ const rishi = { name: 'Rishi', lang: 'en-IN', voiceURI: 'rishi' };
+ assert.equal(selectPreferredVoice([female,veena], 'female'), veena);
+ assert.equal(selectPreferredVoice([male,rishi], 'male'), rishi);
+});
