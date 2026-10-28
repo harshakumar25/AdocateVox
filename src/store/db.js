@@ -243,8 +243,8 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     reportCaseCandidates: db.prepare(`
       SELECT id, court, title, decided_on, case_no, source_url, pdf_url
       FROM court_case
-      WHERE lower(title) LIKE ? AND lower(title) LIKE ? AND substr(decided_on, 1, 4) = ?
-      ORDER BY decided_on DESC, id DESC LIMIT 12
+      WHERE lower(title) LIKE ? AND lower(title) LIKE ? AND (? = '' OR substr(decided_on, 1, 4) = ?)
+      ORDER BY decided_on DESC, id DESC LIMIT 50
     `),
     versionMatches: db.prepare('SELECT 1 AS hit FROM provision_fts WHERE rowid = ? AND provision_fts MATCH ?'),
     stats: db.prepare(`
@@ -1061,7 +1061,7 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     },
     reportCaseCandidates: ({ partyA, partyB, year }) => statements.reportCaseCandidates.all(
       `%${String(partyA).toLowerCase().replace(/[%_]/g, '')}%`,
-      `%${String(partyB).toLowerCase().replace(/[%_]/g, '')}%`, String(year),
+      `%${String(partyB).toLowerCase().replace(/[%_]/g, '')}%`, String(year || ''), String(year || ''),
     ).map((row) => ({ ...row, aliases: statements.aliasesForCase.all(row.id).map((item) => item.normalized) })),
     currentProvisions,
     countProvisionsAsOf,

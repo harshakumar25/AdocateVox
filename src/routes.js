@@ -1,3 +1,5 @@
+import { synthesizeIndianVoice } from './speech/indianVoice.js';
+import { openCorpus } from './rag/corpus.js';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -166,7 +168,28 @@ export const handleLawBuddyApiRoute = async (req, res, {
   prepareBrief = prepareCaseBrief,
   reportGenerate = generateReportText,
   reportOptions = {},
+  reportDiscover,
 }) => {
+  if (pathname === '/lawbuddy/api/speech' && ['GET', 'POST'].includes(req.method)) {
+    res.setHeader('Cache-Control', 'no-store');
+    if (req.method === 'GET') {
+      sendJson(res, 200, { configured: Boolean(process.env.SARVAM_API_KEY), provider: 'Sarvam', language: 'en-IN' }, req);
+    } else {
+      // This paid endpoint accepts same-origin JSON requests only.
+      let sameOrigin = false;
+      try { sameOrigin = new URL(req.headers.origin).host === req.headers.host; } catch {}
+      if (!sameOrigin || !String(req.headers['content-type']).startsWith('application/json')) {
+        sendJson(res, 403, { error: 'Use the LawBuddy voice controls.' }, req);
+        return true;
+      }
+      const body = await readBody(req, 16000);
+      let input;
+      try { input = body && JSON.parse(body.toString('utf8')); } catch {}
+      const result = body ? await synthesizeIndianVoice(input) : { status: 413, error: 'Speech request is too large.' };
+      sendJson(res, result.status, result, req);
+    }
+    return true;
+  }
   const isUpload = req.method === 'POST' && pathname === '/lawbuddy/api/copy-check';
   const isReport = req.method === 'POST' && pathname === '/lawbuddy/api/reports';
   const briefMatch = req.method === 'POST' ? /^\/lawbuddy\/api\/cases\/(\d+)\/brief$/.exec(pathname) : null;
@@ -195,13 +218,14 @@ export const handleLawBuddyApiRoute = async (req, res, {
       groq: { configured: Boolean(reportOptions.GROQ_API_KEY || process.env.GROQ_API_KEY) },
     } };
   } else if (isReport) {
-    const body = await readBody(req, 16 * 1024);
+    const body = await readBody(req, 2 * 1024 * 1024);
     if (!body) result = { ok: false, status: 413, error: 'Report request is too large.' };
     else {
       let input;
       try { input = JSON.parse(body.toString('utf8')); } catch { input = null; }
-      result = input && typeof input === 'object' ? await createLegalReport({ store, input,
+      result = input && typeof input === 'object' ? await createLegalReport({ store, input, fetcher: fetcherFor(store), discoverCase: reportDiscover,
         generate: (args) => reportGenerate({ ...args, options: reportOptions }),
+        options: { ...reportOptions, checkpointDir: reportOptions.REPORT_CHECKPOINT_DIR || undefined },
       }) : { ok: false, status: 400, error: 'Send a JSON report request.' };
     }
   } else if (isUpload) {
@@ -245,12 +269,22 @@ export const handleLawBuddyApiRoute = async (req, res, {
     result = searchLaw(store, parsedUrl.searchParams.get('q'), {
       act: parsedUrl.searchParams.get('act'), asOf: parsedUrl.searchParams.get('asOf') || undefined,
     });
+  } else if (pathname === '/lawbuddy/api/rag/search') {
+    const corpus = openCorpus();
+    try { result = { ok: true, mode: 'FTS5 BM25 source retrieval', items: corpus.search((parsedUrl.searchParams.get('q') || '').slice(0,2000), { topic: parsedUrl.searchParams.get('topic') || '', instrument: parsedUrl.searchParams.get('instrument') || '' }) }; } finally { corpus.close(); }
+  } else if (pathname === '/lawbuddy/api/rag/coverage') {
+    const corpus = openCorpus();
+    try { result = { ok: true, items: corpus.coverage() }; } finally { corpus.close(); }
   } else if (pathname === '/lawbuddy/api/catalog') {
     result = searchCatalog(store, {
       query: parsedUrl.searchParams.get('q') || '', topic: parsedUrl.searchParams.get('topic') || '',
       includeForeign: parsedUrl.searchParams.get('includeForeign') === '1',
       asOf: parsedUrl.searchParams.get('asOf') || undefined,
     });
+    if (result.ok) {
+      const corpus = openCorpus();
+      try { const coverage = new Map(corpus.coverage().map((row) => [row.id,row])); result.items = result.items.map((item) => ({...item, rag: coverage.get(item.id) || null})); } finally { corpus.close(); }
+    }
   } else if (pathname === '/lawbuddy/api/lookup') {
     result = lookupSection(store, parsedUrl.searchParams.get('act'), parsedUrl.searchParams.get('section'));
   } else if (pathname === '/lawbuddy/api/sync') {
@@ -270,6 +304,7 @@ export const handleLawBuddyApiRoute = async (req, res, {
   }
 
   const { status, ...body } = result;
-  sendJson(res, status ?? (body.ok ? 200 : 404), body, req);
+  const httpStatus = Number.isInteger(status) ? status : (body.ok ? 200 : 404);
+  sendJson(res, httpStatus, typeof status === 'string' ? { ...body, status } : body, req);
   return true;
 };

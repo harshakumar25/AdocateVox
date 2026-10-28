@@ -27,8 +27,8 @@ export function isBannedRoboticVoice(voiceName) {
 }
 
 /**
- * Scores a candidate SpeechSynthesisVoice based on audio fidelity, human warmth,
- * language, and naturalness. Returns a numeric score (-1000 for banned voices).
+ * Ranks installed voices by locale and advertised voice metadata.
+ * These heuristics cannot measure perceived naturalness. Returns a numeric score (-1000 for banned voices).
  */
 export function scoreSpeechVoice(voice) {
   if (!voice || !voice.name) return -1000;
@@ -41,7 +41,8 @@ export function scoreSpeechVoice(voice) {
   let score = 0;
 
   // 2. Language: prioritize English variants
-  if (lang.startsWith('en-us')) score += 140;
+  if (lang.startsWith('en-in')) score += 750;
+  else if (lang.startsWith('en-us')) score += 140;
   else if (lang.startsWith('en-gb')) score += 120;
   else if (lang.startsWith('en-ca') || lang.startsWith('en-au')) score += 110;
   else if (lang.startsWith('en')) score += 90;
@@ -119,3 +120,22 @@ export function selectBestSpeechVoice(voices) {
   scoredVoices.sort((a, b) => b.score - a.score);
   return scoredVoices[0].voice;
 }
+
+// Browser voices have no portable gender field. Only recognised names or explicit
+// provider labels are assigned to a profile; unknown voices remain selectable by name.
+export function voiceProfile(voice) {
+  const name = String(voice?.name || '').toLowerCase();
+  if (/\bfemale\b|\b(samantha|ava|serena|jenny|aria|zoe|karen|tessa|victoria|allison|moira|veena)\b/.test(name)) return 'female';
+  if (/\bmale\b|\b(oliver|tom|guy|christopher|evan|nathan|rishi|daniel|alex)\b/.test(name)) return 'male';
+  return null;
+}
+export function selectPreferredVoice(voices, preference = 'auto') {
+  const english = (voices || []).filter((v) => /^en(?:-|$)/i.test(v.lang));
+  if (preference === 'auto') return selectBestSpeechVoice(english);
+  if (preference.startsWith('voice:')) return english.find((v) => `voice:${v.voiceURI}` === preference) || null;
+  const candidates = english.filter((v) => voiceProfile(v) === preference);
+  // An explicit male choice may use an installed Daniel/Alex voice; the old blanket
+  // ban must not silently replace a user's requested male narrator with a female one.
+  return candidates.sort((a,b) => scoreSpeechVoice(b) - scoreSpeechVoice(a))[0] || null;
+}
+export const normaliseSpeechRate = (value) => Math.min(1.3, Math.max(0.7, Number(value) || 0.95));

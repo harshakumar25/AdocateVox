@@ -1,0 +1,13 @@
+{
+  "note": "Only this row is seeded for reports. Check both official texts before adding any CrPC/BNSS, IPC/BNS or Evidence Act/BSA row. A correspondence is not a ruling on transition or substantive equivalence.",
+  "rows": [{
+    "oldAct": "CrPC", "oldSection": "152", "newAct": "BNSS", "newSection": "171",
+    "commencement": "2024-07-01", "checkedOn": "2026-10-24",
+    "oldSource": "https://upload.indiacode.nic.in/showfile?actid=AC_CEN_5_23_000010_197402_1517807320555&filename=a1974-02.pdf&type=actfile",
+    "newSource": "https://www.indiacode.nic.in/bitstream/123456789/20099/1/eng.pdf",
+    "correspondenceSource": "https://cytrain.ncrb.gov.in/staticpage/web_pages/SectionTableBNSS.html",
+    "commencementSource": "https://www.pib.gov.in/Pressreleaseshare.aspx?PRID=2036414&lang=2&reg=48",
+    "savingsAnchor": "BNSS s.531(2)(a)",
+    "caution": "For proceedings pending at commencement, check BNSS section 531 and the procedural record. Do not choose the governing code from the judgment date alone. The correspondence does not establish current amendments or case applicability."
+  }]
+}

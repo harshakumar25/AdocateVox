@@ -10,6 +10,8 @@
  */
 
 export const LEGAL_SOURCES = Object.freeze([
+  { id: 'ap-high-court-laws', name: 'Andhra Pradesh High Court legal text copies', tier: 1, baseUrl: 'https://aphc.gov.in', hosts: ['aphc.gov.in'] },
+  { id: 'ip-india', name: 'Intellectual Property India', tier: 0, baseUrl: 'https://ipindia.gov.in', hosts: ['ipindia.gov.in'] },
   {
     id: 'aws-sc-judgments',
     name: 'AWS Open Data: Indian Supreme Court Judgments (CC-BY-4.0)',

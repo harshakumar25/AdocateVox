@@ -1,0 +1,29 @@
+{
+  "version": "reports-v2",
+  "retrieverVersion": "explicit-reference-rerank-v2",
+  "maxOverlap": 0.10,
+  "shingleWords": 6,
+  "maxRepairRounds": 5,
+  "minRelevanceScore": 0.65,
+  "disagreementThreshold": 0.40,
+  "consensusSimilarity": 0.55,
+  "chunkWords": 1200,
+  "maxJudgmentChars": 400000,
+  "maxQuoteWords": 60,
+  "maxCardsPerChunk": 16,
+  "maxCardsPerSection": 24,
+  "maxClaimsPerSection": 10,
+  "drafts": { "ollama": 5, "groq": 1, "grok": 1 },
+  "temperatures": { "identity": 0, "relevance": 0, "extract": 0, "verify": 0, "draft": 0.5, "repair": 0.2 },
+  "seed": 7,
+  "ollamaContext": 16384,
+  "ollamaOutputTokens": 2048,
+  "cloudOutputTokens": 6000,
+  "bannedPhrases": [
+    "delve", "tapestry", "testament", "pivotal", "multifaceted", "underscore", "underscores",
+    "realm", "intricate", "seamless", "paramount", "navigate the", "landscape of",
+    "it is important to note", "it is worth noting", "in conclusion", "moreover", "furthermore",
+    "in today's", "ever-evolving", "plays a crucial role", "serves as a", "shed light", "a myriad of",
+    "game-changer", "robust framework", "comprehensive overview", "leverage"
+  ]
+}
