@@ -68,7 +68,7 @@ export const createCasesView = ({ pointsTable, pointsBody, pointsEmpty, pointsTi
       button.disabled = true;
       status.textContent = 'Reading the judgment and checking every quote… this can take a minute.';
       const params = new URLSearchParams(label ? { label } : {});
-      const { ok, body } = await fetchJson(`/lawbuddy/api/cases/${card.id}/brief?${params}`, { method: 'POST' })
+      const { ok, body } = await fetchJson(`/advocatevox/api/cases/${card.id}/brief?${params}`, { method: 'POST' })
         .catch(() => ({ ok: false, body: {} }));
       if (run !== current) return;
       if (ok && body.ok) {
@@ -107,7 +107,7 @@ export const createCasesView = ({ pointsTable, pointsBody, pointsEmpty, pointsTi
     const list = el('ol', { className: 'citing-list' });
     button.addEventListener('click', async () => {
       button.disabled = true;
-      const { ok, body } = await fetchJson(`/lawbuddy/api/cases/${card.id}/cited-by`).catch(() => ({ ok: false, body: {} }));
+      const { ok, body } = await fetchJson(`/advocatevox/api/cases/${card.id}/cited-by`).catch(() => ({ ok: false, body: {} }));
       if (run !== current) return;
       if (!ok || !body.ok) {
         button.disabled = false;
@@ -203,7 +203,7 @@ export const createCasesView = ({ pointsTable, pointsBody, pointsEmpty, pointsTi
   const load = async (label) => {
     reset('Finding the Supreme Court judgments…');
     const run = current;
-    const { ok, body } = await fetchJson(`/lawbuddy/api/cases?provision=${encodeURIComponent(label)}&limit=6`)
+    const { ok, body } = await fetchJson(`/advocatevox/api/cases?provision=${encodeURIComponent(label)}&limit=6`)
       .catch(() => ({ ok: false, body: {} }));
     if (run !== current) return;
     if (!ok || !body.ok) {

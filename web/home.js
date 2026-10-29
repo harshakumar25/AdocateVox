@@ -1,4 +1,4 @@
-// LawBuddy home: shows what the verified library holds, from /lawbuddy/api/health.
+// AdvocateVox home: shows what the verified library holds, from /advocatevox/api/health.
 import { el, fetchJson, hostOf, safeLink } from './common.js';
 
 const library = document.getElementById('library');
@@ -32,7 +32,7 @@ const tableCard = (table) =>
   ]);
 
 const render = async () => {
-  const { ok, body } = await fetchJson('/lawbuddy/api/health').catch(() => ({ ok: false, body: {} }));
+  const { ok, body } = await fetchJson('/advocatevox/api/health').catch(() => ({ ok: false, body: {} }));
   if (!ok || !body.library) {
     library.replaceChildren(
       el('p', { className: 'empty', text: 'The legal library is not installed on this server yet.' }),
@@ -72,7 +72,7 @@ const loadCatalog = async () => {
   const generation = ++catalogGeneration;
   const params = new URLSearchParams({ q: catalogQuery.value.trim(), topic: catalogTopic.value });
   catalogStatus.textContent = 'Checking the instrument index…';
-  const { ok, body } = await fetchJson(`/lawbuddy/api/catalog?${params}`).catch(() => ({ ok: false, body: {} }));
+  const { ok, body } = await fetchJson(`/advocatevox/api/catalog?${params}`).catch(() => ({ ok: false, body: {} }));
   if (generation !== catalogGeneration) return;
   if (!ok || !body.ok) {
     catalogStatus.textContent = body.error || 'The instrument index could not be loaded.';
@@ -100,7 +100,7 @@ ragForm?.addEventListener('submit', async (event) => {
   output.textContent = 'Searching indexed source text…';
   try {
     const params = new URLSearchParams({q: document.getElementById('rag-query').value,topic: catalogTopic.value});
-    const {ok,body} = await fetchJson(`/lawbuddy/api/rag/search?${params}`);
+    const {ok,body} = await fetchJson(`/advocatevox/api/rag/search?${params}`);
     if (sequence !== ragRequest) return;
     if (!ok) throw new Error('Source search failed.');
     output.replaceChildren(...(body.items.length ? body.items.map((hit) => el('article',{className:'card'},[

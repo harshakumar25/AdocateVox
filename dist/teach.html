@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teach me — AdvocateVox</title>
+  <meta name="description"
+    content="Ask about the Constitution of India and hear it explained from the official text, with the exact provisions shown alongside.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/advocatevox/assets/advocatevox.css">
+  <script type="module" src="/advocatevox/assets/teach.js"></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <a class="brand" href="/advocatevox" aria-label="AdvocateVox home">
+        <span class="brand-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0L5 7zm14 0l-3 6a3 3 0 0 0 6 0l-3-6z" />
+          </svg>
+        </span>
+        AdvocateVox
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="/advocatevox">Home</a>
+        <a href="/advocatevox/teach" aria-current="page">Teach me</a>
+        <a href="/advocatevox/check">Check my bare act</a>
+        <a href="/advocatevox/practice">Practice workbench</a>
+        <a href="/advocatevox/reports">Reports</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="studio">
+    <div class="wrap">
+      <div class="studio-top">
+        <div class="studio-ask">
+          <form class="ask" id="ask-form">
+            <label class="visually-hidden" for="question">Your question</label>
+            <textarea id="question" rows="2" maxlength="2000" required
+              placeholder="Ask about an Article, a right or a section…"></textarea>
+            <div class="ask-actions voice-controls">
+              <label class="toggle"><input type="checkbox" id="voice" checked> Speak answers</label>
+              <div class="voice-field"><label for="narrator">Narrator</label><select id="narrator">
+                  <option value="auto">Automatic · server voice</option>
+                  <option value="indian-female" disabled>Indian English · Ishita (cloud, setup required)</option>
+                  <option value="indian-male" disabled>Indian English · Ratan (cloud, setup required)</option>
+                  <option value="female">Female · device voice</option>
+                  <option value="male">Male · device voice</option>
+                </select></div>
+              <div class="voice-field"><label for="speech-rate">Reading speed</label><select id="speech-rate">
+                  <option value="0.8">Slow</option>
+                  <option value="0.95">Relaxed</option>
+                  <option value="1" selected>Natural pace</option>
+                  <option value="1.1">Faster</option>
+                </select></div>
+              <label class="cloud-consent"><input type="checkbox" id="cloud-speech-consent"> Allow selected Indian
+                voices to send spoken text to Sarvam</label>
+              <button id="voice-preview" type="button" class="button">Preview voice</button>
+              <p id="voice-note" role="status">Device voices depend on your browser. Automatic uses the configured
+                server narrator.</p>
+              <button class="button ghost" type="button" id="stop" hidden>Stop</button>
+              <button class="button" type="submit" id="teach">Teach me</button>
+            </div>
+          </form>
+          <div class="chips" id="examples" aria-label="Try a question">
+            <button class="chip" type="button">Explain Article 21</button>
+            <button class="chip" type="button">What is the right to education?</button>
+            <button class="chip" type="button">Can the police detain me without telling the reason?</button>
+            <button class="chip" type="button">Explain Article 124A</button>
+            <button class="chip" type="button">How is the President elected?</button>
+            <button class="chip" type="button">While protecting myself, can I kill someone?</button>
+            <button class="chip" type="button">Draft a formal note: is a WhatsApp screenshot valid evidence?</button>
+          </div>
+        </div>
+
+        <aside class="panel points" aria-labelledby="points-title">
+          <div class="panel-head">
+            <h2 class="panel-title" id="points-title">Precedent points</h2>
+          </div>
+          <div class="chips points-choices" id="points-choices"
+            aria-label="Judgments for the provisions this answer relies on" hidden></div>
+          <table class="points-table" id="points-table" hidden>
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Judgment</th>
+                <th scope="col">Year</th>
+                <th scope="col">Bench</th>
+                <th scope="col" title="Later judgments in the full-text index that cite it">Cited</th>
+                <th scope="col">Points</th>
+                <th scope="col">Verified reviews</th>
+              </tr>
+            </thead>
+            <tbody id="points-body"></tbody>
+          </table>
+          <p class="empty" id="points-empty">Ask about an Article of the Constitution to see the Supreme Court judgments
+            on it, ranked by points from the official record.</p>
+          <p class="points-note">Points come only from the Court's own records: bench strength, where the Article sits
+            in the official headnote, and how many later judgments cite it. "Overruled" is the Supreme Court Reports'
+            own label in the overruling judgment. Reviews count only from reviewers whose identity AdvocateVox has
+            verified.</p>
+        </aside>
+      </div>
+
+      <div class="grid">
+        <section class="panel" aria-labelledby="answer-title">
+          <div class="panel-head">
+            <h2 class="panel-title" id="answer-title">AdvocateVox explains</h2>
+            <span class="badge" id="grounding" hidden></span>
+            <span class="status" id="status" role="status">Ask a question to begin.</span>
+          </div>
+          <div class="reading" id="reading" hidden></div>
+          <div class="answer-text placeholder" id="answer" aria-live="polite">The explanation appears here as it is
+            spoken.</div>
+          <div class="answer-check" id="answer-check" hidden></div>
+          <section class="critique" id="critique" aria-live="polite" hidden></section>
+          <div class="error" id="error" role="alert" hidden></div>
+        </section>
+
+        <aside class="panel" aria-labelledby="evidence-title">
+          <div class="panel-head">
+            <h2 class="panel-title" id="evidence-title">Official text relied on</h2>
+          </div>
+          <div class="evidence-list" id="evidence">
+            <p class="empty">The provisions AdvocateVox cites appear here, exactly as published, with any court rulings
+              or pending changes that affect them.</p>
+          </div>
+          <section class="cases" id="cases" aria-labelledby="cases-title" hidden>
+            <h2 class="panel-title cases-title" id="cases-title">Supreme Court judgments</h2>
+            <p class="cases-note" id="cases-note"></p>
+            <div class="case-list" id="case-list"></div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p>AdvocateVox provides legal information for learning. It is not legal advice and does not replace a lawyer.</p>
+      <p>Need legal help? Free legal aid is available through NALSA (helpline 15100) and your State Legal Services
+        Authority.</p>
+    </div>
+  </footer>
+</body>
+
+</html>

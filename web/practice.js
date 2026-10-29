@@ -64,7 +64,7 @@ const getLaw = async (lead, asOf, signal) => {
     error: 'Historical CrPC text is not in AdvocateVox’s dated library. Inspect the official edition, State amendments and transitional provisions.',
     sourceUrl: CRPC_SOURCE,
   };
-  const url = `/lawbuddy/api/section/${lead.act}/${lead.section}${asOf ? `?asOf=${encodeURIComponent(asOf)}` : ''}`;
+  const url = `/advocatevox/api/section/${lead.act}/${lead.section}${asOf ? `?asOf=${encodeURIComponent(asOf)}` : ''}`;
   try {
     const { body } = await fetchJson(url, { signal });
     return body.ok ? body : { act: lead.act, label: `s.${lead.section}`, error: body.error || 'The provision could not be verified in this library.' };
@@ -76,7 +76,7 @@ const getLaw = async (lead, asOf, signal) => {
 const getCases = async (lead, decidedBy, signal) => {
   try {
     const query = new URLSearchParams({ provision: `${lead.act} ${lead.section}`, limit: '5', decidedBy });
-    const { body } = await fetchJson(`/lawbuddy/api/cases?${query}`, { signal });
+    const { body } = await fetchJson(`/advocatevox/api/cases?${query}`, { signal });
     return body.ok ? body : { cases: [], error: body.error || 'Cases could not be searched.' };
   } catch {
     return { cases: [], error: 'The case index could not be reached.' };
@@ -322,7 +322,7 @@ document.getElementById('citation-check').addEventListener('click', async () => 
   const generation = ++citationGeneration;
   citationResult.textContent = 'Checking citation identity…';
   try {
-    const { body } = await fetchJson(`/lawbuddy/api/citation?${new URLSearchParams({ citation: value })}`);
+    const { body } = await fetchJson(`/advocatevox/api/citation?${new URLSearchParams({ citation: value })}`);
     if (generation !== citationGeneration) return;
     if (!body.ok) return void (citationResult.textContent = body.error || 'Citation could not be checked.');
     if (!body.verified) return void (citationResult.textContent = `${body.citation}: ${body.reason}`);

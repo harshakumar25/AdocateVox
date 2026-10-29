@@ -1,4 +1,4 @@
-// LawBuddy teaching studio: streams a grounded answer from POST /lawbuddy/teach,
+// AdvocateVox teaching studio: streams a grounded answer from POST /advocatevox/teach,
 // speaks it (Chatterbox clips, browser speech as fallback) and shows the official
 // text it relied on. Untrusted text is only ever set through textContent.
 import { el, fetchJson, formatDate, hostOf, humanLabel, safeLink } from './common.js';
@@ -157,7 +157,7 @@ const voice = {
         if (end < remaining.length) { const space = remaining.lastIndexOf(' ', end); if (space > 1000) end = space; }
         const segment = remaining.slice(0, end); remaining = remaining.slice(end).trimStart();
         voiceNote.textContent = 'Preparing Indian-English audio…';
-        const response = await fetch('/lawbuddy/api/speech', {
+        const response = await fetch('/advocatevox/api/speech', {
           method: 'POST', signal: request.signal, headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: segment, voice: narrator.value, rate: normaliseSpeechRate(speechRate.value), cloudConsent: true }),
         });
@@ -239,7 +239,7 @@ narrator.addEventListener('change', () => {
   voiceNote.textContent = narrator.value === 'auto' ? 'Using the configured server voice; browser speech is the fallback.' : 'Using your selected device voice for answers and fallback audio.';
 });
 cloudConsent.addEventListener('change', () => { voice.reset(); refreshVoices(); });
-fetch('/lawbuddy/api/speech').then((r) => r.ok ? r.json() : null).then((data) => {
+fetch('/advocatevox/api/speech').then((r) => r.ok ? r.json() : null).then((data) => {
   indianVoiceConfigured = data?.configured === true;
   for (const [value, name] of [['indian-female', 'Ishita'], ['indian-male', 'Ratan']]) {
     const option = narrator.querySelector(`option[value="${value}"]`);
@@ -408,13 +408,13 @@ const renderEvidence = (sources, id, analysis = null) => {
       if (source.kind === 'statute-absence') return absenceCard(source);
       if (source.kind === 'correspondence' && source.lookup) {
         const params = new URLSearchParams({ act: source.lookup.act, section: source.lookup.section });
-        const { body } = await fetchJson(`/lawbuddy/api/lookup?${params}`);
+        const { body } = await fetchJson(`/advocatevox/api/lookup?${params}`);
         return correspondenceCard(source, body);
       }
       if (source.label) {
         const path = source.act && source.act !== 'COI'
-          ? `/lawbuddy/api/section/${encodeURIComponent(source.act)}/${encodeURIComponent(source.label)}`
-          : `/lawbuddy/api/article/${encodeURIComponent(source.label)}`;
+          ? `/advocatevox/api/section/${encodeURIComponent(source.act)}/${encodeURIComponent(source.label)}`
+          : `/advocatevox/api/article/${encodeURIComponent(source.label)}`;
         const { ok, body } = await fetchJson(path);
         if (ok) return provisionCard(body, { viaSearch: source.via === 'search', role: source.role });
       }
@@ -587,7 +587,7 @@ const teach = async (text) => {
 
   let chatterboxOn = false;
   try {
-    const response = await fetch('/lawbuddy/teach', {
+    const response = await fetch('/advocatevox/teach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({ text, stream: true, requestId: `lawbuddy_${Date.now()}_${id}` }),
@@ -660,7 +660,7 @@ form.addEventListener('submit', (event) => {
   event.preventDefault();
   const text = question.value.trim();
   if (!text) return;
-  window.history.replaceState(null, '', `/lawbuddy/teach?q=${encodeURIComponent(text)}`);
+  window.history.replaceState(null, '', `/advocatevox/teach?q=${encodeURIComponent(text)}`);
   teach(text);
 });
 

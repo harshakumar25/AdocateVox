@@ -196,6 +196,19 @@ test('LawBuddy library API (/lawbuddy/api/*): health, article as of a date, sear
     assert.equal(lookup.body.matches[0].new, 'BNS s.103 Punishment for murder.');
     assert.equal((await get('/lawbuddy/api/lookup?act=IPC&section=999')).status, 404);
     assert.equal((await get('/lawbuddy/api/nope')).status, 404);
+
+    // AdvocateVox new brand API routing
+    const avHealth = await get('/advocatevox/api/health');
+    assert.equal(avHealth.status, 200);
+    assert.equal(avHealth.body.service, 'AdvocateVox');
+    assert.equal(avHealth.body.library.provisions, 5);
+    const avArt = await get('/advocatevox/api/article/21A');
+    assert.equal(avArt.status, 200);
+    assert.equal(avArt.body.inForceSince, '2010-04-01');
+    const avSearch = await get('/advocatevox/api/search?q=right%20to%20education');
+    assert.equal(avSearch.body.hits[0].label, 'Art.21A');
+    const avLookup = await get('/advocatevox/api/lookup?act=IPC&section=302');
+    assert.equal(avLookup.body.matches[0].new, 'BNS s.103 Punishment for murder.');
   } finally {
     await new Promise((resolve) => server.close(resolve));
     store.close();
@@ -212,18 +225,26 @@ test('LawBuddy library API (/lawbuddy/api/*): health, article as of a date, sear
   }
 });
 
-test('GET /lawbuddy and GET /lawbuddy/teach serve the website from a fixed whitelist with security headers', async () => {
+test('GET /advocatevox, /lawbuddy, /advocatevox/teach and /lawbuddy/teach serve the website from a fixed whitelist with security headers', async () => {
   const server = createTestServer({ LEGAL_DB_PATH: '/nonexistent/lawbuddy.db' });
   await new Promise((resolve) => server.listen(0, resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
     for (const [path, type, marker] of [
+      ['/advocatevox', 'text/html', 'Learn Indian law from the'],
+      ['/advocatevox/', 'text/html', 'Learn Indian law from the'],
+      ['/advocatevox/teach', 'text/html', 'Official text relied on'],
+      ['/advocatevox/assets/advocatevox.css', 'text/css', '--brass'],
+      ['/advocatevox/assets/teach.js', 'text/javascript', 'POST /advocatevox/teach'],
+      ['/advocatevox/assets/home.js', 'text/javascript', '/advocatevox/api/health'],
+      ['/advocatevox/assets/common.js', 'text/javascript', 'isSafeUrl'],
+      ['/advocatevox/assets/voiceSelector.js', 'text/javascript', "'daniel'"],
       ['/lawbuddy', 'text/html', 'Learn Indian law from the'],
       ['/lawbuddy/', 'text/html', 'Learn Indian law from the'],
       ['/lawbuddy/teach', 'text/html', 'Official text relied on'],
       ['/lawbuddy/assets/lawbuddy.css', 'text/css', '--brass'],
-      ['/lawbuddy/assets/teach.js', 'text/javascript', 'POST /lawbuddy/teach'],
-      ['/lawbuddy/assets/home.js', 'text/javascript', '/lawbuddy/api/health'],
+      ['/lawbuddy/assets/teach.js', 'text/javascript', 'POST /advocatevox/teach'],
+      ['/lawbuddy/assets/home.js', 'text/javascript', '/advocatevox/api/health'],
       ['/lawbuddy/assets/common.js', 'text/javascript', 'isSafeUrl'],
       ['/lawbuddy/assets/voiceSelector.js', 'text/javascript', "'daniel'"],
     ]) {
@@ -234,10 +255,10 @@ test('GET /lawbuddy and GET /lawbuddy/teach serve the website from a fixed white
       assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
       assert.ok((await res.text()).includes(marker), path);
     }
-    const head = await fetch(`${base}/lawbuddy/teach`, { method: 'HEAD' });
+    const head = await fetch(`${base}/advocatevox/teach`, { method: 'HEAD' });
     assert.equal(head.status, 200);
 
-    for (const path of ['/lawbuddy/assets/../../server/server.js', '/lawbuddy/assets/teach.html', '/lawbuddy/assets/missing.js', '/lawbuddy/index.html']) {
+    for (const path of ['/advocatevox/assets/../../server/server.js', '/advocatevox/assets/teach.html', '/advocatevox/assets/missing.js', '/advocatevox/index.html', '/lawbuddy/assets/../../server/server.js', '/lawbuddy/assets/teach.html', '/lawbuddy/assets/missing.js', '/lawbuddy/index.html']) {
       assert.equal((await fetch(`${base}${path}`)).status, 404, path);
     }
   } finally {

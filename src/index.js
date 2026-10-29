@@ -24,6 +24,12 @@ export {
   isLawBuddyRoute,
   handleLawBuddyStaticRoute,
   handleLawBuddyApiRoute,
+  ADVOCATEVOX_FILES,
+  ADVOCATEVOX_SECURITY_HEADERS,
+  getAdvocateVoxFiles,
+  isAdvocateVoxRoute,
+  handleAdvocateVoxStaticRoute,
+  handleAdvocateVoxApiRoute,
 } from './routes.js';
 export { findSourceForUrl, LEGAL_SOURCES } from './sources/registry.js';
 export { parseRobots } from './sources/robots.js';

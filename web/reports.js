@@ -14,7 +14,7 @@ let selectedCaseId = null;
 const reviewNotice = document.getElementById('report-review-notice');
 let currentReport = null; let revision = 0;
 form.elements.asOf.value = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-fetch('/lawbuddy/api/reports/providers').then((r) => r.json()).then((data) => {
+fetch('/advocatevox/api/reports/providers').then((r) => r.json()).then((data) => {
   for (const name of ['grok', 'groq']) for (const select of [form.elements.provider, form.elements.verifierProvider, form.elements.compareProvider]) {
     const option = select?.querySelector(`option[value="${name}"]`);
     if (option && !data.providers?.[name]?.configured) { option.disabled = true; option.textContent += ' · needs server key'; }
@@ -90,7 +90,7 @@ form.addEventListener('submit', async (event) => {
   input.caseIdentity = Object.fromEntries(['caption', 'court', 'citation', 'caseNo', 'decisionDate'].map((key) => [key, fields.get(key) || '']));
   for (const key of ['verifierProvider', 'compareProvider', 'resumeRunId']) if (fields.get(key)) input[key] = fields.get(key);
   try {
-    const response = await fetch('/lawbuddy/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
+    const response = await fetch('/advocatevox/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
     const report = await response.json();
     if (!response.ok || !report.ok) throw new Error(`${report.error || 'Report could not be prepared.'}${report.runId ? ` Resume ID: ${report.runId}` : ''}`);
     if (requestedRevision !== revision) { status.textContent = 'The request changed during generation. Submit the revised request to enable export.'; return; }

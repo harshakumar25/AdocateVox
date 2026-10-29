@@ -1,11 +1,11 @@
 /**
- * npm run dev — the LawBuddy website served from this checkout.
+ * npm run dev — the AdvocateVox website served from this checkout.
  *
- * The /lawbuddy pages and API, and the teaching pipeline behind /lawbuddy/teach, are served by DocVex's
- * server, which normally imports the published @docvex/lawbuddy from its node_modules. This links a
- * private copy of that layout in .dev/ (git-ignored): DocVex's server, and @docvex/lawbuddy pointing at
- * this checkout, then runs it with --preserve-symlinks so the server imports the code being worked on.
- * DocVex's own node_modules are never touched.
+ * The /advocatevox pages and API, and the teaching pipeline behind /advocatevox/teach (with backwards-compatible
+ * /lawbuddy routes), are served by DocVex's server, which normally imports the published @docvex/lawbuddy from
+ * its node_modules. This links a private copy of that layout in .dev/ (git-ignored): DocVex's server, and
+ * @docvex/lawbuddy pointing at this checkout, then runs it with --preserve-symlinks so the server imports
+ * the code being worked on. DocVex's own node_modules are never touched.
  *
  *   DOCVEX_DIR  the DocVex checkout (default ../DOCVEX)
  *   PORT        the port (default 3020)

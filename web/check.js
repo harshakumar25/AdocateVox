@@ -1,4 +1,4 @@
-// "Check my bare act, or my notes": sends a PDF to POST /lawbuddy/api/copy-check, which first works out what
+// "Check my bare act, or my notes": sends a PDF to POST /advocatevox/api/copy-check, which first works out what
 // the document is (a copy of an Act, a copy of a repealed code, or a write-up) and then checks it. Every
 // finding is shown with the official text or judgment behind it. Untrusted text is only set through textContent.
 import { el, fetchJson, formatDate, hostOf, safeLink } from './common.js';
@@ -38,7 +38,7 @@ const errorBox = document.getElementById('error');
 const changes = document.getElementById('changes');
 
 const learnLink = (title) =>
-  el('a', { text: `Learn the current ${title}`, attrs: { href: `/lawbuddy/teach?q=${encodeURIComponent(`Explain ${title}`)}` } });
+  el('a', { text: `Learn the current ${title}`, attrs: { href: `/advocatevox/teach?q=${encodeURIComponent(`Explain ${title}`)}` } });
 
 const phrases = (label, items) => {
   const line = el('p', { text: label });
@@ -196,7 +196,7 @@ const lookupBox = (report) => {
     const section = input.value.trim();
     if (!section) return;
     const params = new URLSearchParams({ act: report.actCode, section });
-    const { body } = await fetchJson(`/lawbuddy/api/lookup?${params}`).catch(() => ({ body: {} }));
+    const { body } = await fetchJson(`/advocatevox/api/lookup?${params}`).catch(() => ({ body: {} }));
     result.replaceChildren(...(body.matches?.length
       ? body.matches.map((match) => el('p', { text: `${match.old} → ${match.new}${match.shared ? ` (${Math.round(match.shared * 100)}% of the new wording carried over)` : ''}` }))
       : [el('p', { className: 'empty', text: `AdvocateVox found no section of the new code carrying forward ${report.actCode} s.${section}: it may have been merged, reworded or omitted.` })]));
@@ -367,7 +367,7 @@ form.addEventListener('submit', async (event) => {
     ? 'Reading your PDF and running local checks…'
     : 'Reading your PDF and checking it. Optional AI claim analysis can take a minute…';
   try {
-    const response = await fetch(`/lawbuddy/api/copy-check?${params}`, {
+    const response = await fetch(`/advocatevox/api/copy-check?${params}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/pdf' },
       body: file,

@@ -1,7 +1,7 @@
 {
   "name": "@docvex/lawbuddy",
   "version": "0.1.0",
-  "description": "LawBuddy \u2014 Voice-first legal tutor with verified statutory grounding",
+  "description": "LawBuddy — Voice-first legal tutor with verified statutory grounding",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
@@ -9,7 +9,9 @@
     "cli": "node --disable-warning=ExperimentalWarning src/cli.js",
     "lint": "find src web -name '*.js' -type f -print0 | xargs -0 -n 1 node --check",
     "dev": "node scripts/dev.mjs",
-    "start": "node scripts/dev.mjs"
+    "start": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "preview": "serve dist -l 4173"
   },
   "keywords": [
     "legal-ai",
@@ -30,5 +32,8 @@
     "workers",
     "docs",
     "README.md"
-  ]
+  ],
+  "devDependencies": {
+    "serve": "^14.2.6"
+  }
 }

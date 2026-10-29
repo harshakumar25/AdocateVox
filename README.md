@@ -263,10 +263,10 @@ npm run dev
 ```
 
 ### Endpoints
-- **Legal Tutor**: `http://localhost:3000/lawbuddy/teach`
-- **Practice Workbench**: `http://localhost:3000/lawbuddy/practice`
-- **Legal Reports**: `http://localhost:3000/lawbuddy/reports`
-- **Instrument Catalog**: `http://localhost:3000/lawbuddy`
+- **Legal Tutor**: `http://localhost:3000/advocatevox/teach`
+- **Practice Workbench**: `http://localhost:3000/advocatevox/practice`
+- **Legal Reports**: `http://localhost:3000/advocatevox/reports`
+- **Instrument Catalog**: `http://localhost:3000/advocatevox`
 
 ---
 

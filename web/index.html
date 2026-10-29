@@ -11,14 +11,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap">
-  <link rel="stylesheet" href="/lawbuddy/assets/lawbuddy.css">
-  <script type="module" src="/lawbuddy/assets/home.js"></script>
+  <link rel="stylesheet" href="/advocatevox/assets/advocatevox.css">
+  <script type="module" src="/advocatevox/assets/home.js"></script>
 </head>
 
 <body>
   <header class="topbar">
     <div class="wrap">
-      <a class="brand" href="/lawbuddy" aria-label="AdvocateVox home">
+      <a class="brand" href="/advocatevox" aria-label="AdvocateVox home">
         <span class="brand-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -28,11 +28,11 @@
         AdvocateVox
       </a>
       <nav class="nav" aria-label="Main">
-        <a href="/lawbuddy" aria-current="page">Home</a>
-        <a href="/lawbuddy/teach">Teach me</a>
-        <a href="/lawbuddy/check">Check my bare act</a>
-        <a href="/lawbuddy/practice">Practice workbench</a>
-        <a href="/lawbuddy/reports">Reports</a>
+        <a href="/advocatevox" aria-current="page">Home</a>
+        <a href="/advocatevox/teach">Teach me</a>
+        <a href="/advocatevox/check">Check my bare act</a>
+        <a href="/advocatevox/practice">Practice workbench</a>
+        <a href="/advocatevox/reports">Reports</a>
       </nav>
     </div>
   </header>
@@ -45,18 +45,18 @@
         <p class="lede">Ask about any Article, Schedule or right. AdvocateVox teaches only from the Constitution as
           published by the Legislative Department, shows you the exact text it relied on, and tells you plainly when it
           cannot verify something.</p>
-        <form class="ask" action="/lawbuddy/teach" method="get" role="search">
+        <form class="ask" action="/advocatevox/teach" method="get" role="search">
           <label class="visually-hidden" for="q">Your question</label>
           <input id="q" name="q" type="text" required maxlength="500" autocomplete="off"
             placeholder="e.g. Can the police detain me without telling the reason?">
           <button class="button" type="submit">Teach me</button>
         </form>
         <div class="chips" aria-label="Try a question">
-          <a class="chip" href="/lawbuddy/teach?q=Explain%20Article%2021">Article 21</a>
-          <a class="chip" href="/lawbuddy/teach?q=What%20is%20the%20right%20to%20education%3F">Right to education</a>
-          <a class="chip" href="/lawbuddy/teach?q=Explain%20Article%2022">Arrest &amp; detention</a>
-          <a class="chip" href="/lawbuddy/teach?q=Explain%20the%20Preamble">The Preamble</a>
-          <a class="chip" href="/lawbuddy/teach?q=Explain%20Article%20124A">NJAC (Article 124A)</a>
+          <a class="chip" href="/advocatevox/teach?q=Explain%20Article%2021">Article 21</a>
+          <a class="chip" href="/advocatevox/teach?q=What%20is%20the%20right%20to%20education%3F">Right to education</a>
+          <a class="chip" href="/advocatevox/teach?q=Explain%20Article%2022">Arrest &amp; detention</a>
+          <a class="chip" href="/advocatevox/teach?q=Explain%20the%20Preamble">The Preamble</a>
+          <a class="chip" href="/advocatevox/teach?q=Explain%20Article%20124A">NJAC (Article 124A)</a>
         </div>
       </div>
     </section>
@@ -65,19 +65,20 @@
       <div class="wrap">
         <p class="eyebrow">For advocates</p>
         <h2 id="practice-home-title">Prepare from the record</h2>
-        <p class="section-note">Build a working FIR information or bail draft from your own facts, expose missing material, and inspect the statute and case sources separately before filing or argument.</p>
+        <p class="section-note">Build a working FIR information or bail draft from your own facts, expose missing
+          material, and inspect the statute and case sources separately before filing or argument.</p>
         <div class="cards">
-          <a class="card" href="/lawbuddy/practice">
+          <a class="card" href="/advocatevox/practice">
             <span class="tag info">Local matter intake</span>
             <h3>Practice workbench</h3>
             <p>Working drafts, opposition grid, hearing questions and source-linked research leads.</p>
           </a>
-          <a class="card" href="/lawbuddy/reports">
+          <a class="card" href="/advocatevox/reports">
             <span class="tag info">Research desk</span>
             <h3>Legal reports</h3>
             <p>Turn a legal question into a source-linked working report and export it to Word.</p>
           </a>
-          <a class="card" href="/lawbuddy/check">
+          <a class="card" href="/advocatevox/check">
             <span class="tag warn">Source comparison</span>
             <h3>Check a bare act or draft</h3>
             <p>Find changed wording, missing provisions and citations that need a closer look.</p>
@@ -90,7 +91,8 @@
       <div class="wrap">
         <p class="eyebrow">In the library</p>
         <h2 id="library-title">Verified official texts</h2>
-        <p class="section-note">Indexed statutory texts show their official source and fingerprint. Old-to-new text alignments below are research aids and are labelled separately from official correspondence tables.</p>
+        <p class="section-note">Indexed statutory texts show their official source and fingerprint. Old-to-new text
+          alignments below are research aids and are labelled separately from official correspondence tables.</p>
         <div class="cards" id="library" aria-live="polite">
           <p class="empty">Checking the library…</p>
         </div>
@@ -101,7 +103,9 @@
       <div class="wrap">
         <p class="eyebrow">Broader practice index</p>
         <h2 id="catalog-title">Find the right instrument first</h2>
-        <p class="section-note">Browse official source identities across corporate, civil and cyber practice. An identified instrument is not presented as indexed law until its provision text has passed import and date checks.</p>
+        <p class="section-note">Browse official source identities across corporate, civil and cyber practice. An
+          identified instrument is not presented as indexed law until its provision text has passed import and date
+          checks.</p>
         <form id="catalog-form" class="catalog-controls" role="search">
           <div class="catalog-field">
             <label for="catalog-query">Instrument or subject</label>
@@ -110,36 +114,44 @@
           <div class="catalog-field">
             <label for="catalog-topic">Practice area</label>
             <select id="catalog-topic">
-            <option value="">All areas</option>
-            <option value="corporate">Corporate and commercial</option>
-            <option value="civil">Civil procedure and remedies</option>
-            <option value="evidence">Evidence</option>
-            <option value="competition">Competition</option>
-            <option value="securities">Securities</option>
-            <option value="trade">Foreign trade</option>
-            <option value="labour">Labour and employment</option>
-            <option value="ip">Intellectual property</option>
-            <option value="consumer">Consumer</option>
-            <option value="environment">Environment</option>
-            <option value="banking">Banking and insurance</option>
-            <option value="insolvency">Insolvency</option>
-            <option value="white-collar">White-collar offences</option>
-            <option value="torts">Torts and civil liability</option>
-            <option value="administrative">Administrative and public law</option>
-            <option value="cyber">Cyber law</option>
-            <option value="cyber-security">Cybersecurity compliance</option>
-            <option value="ecommerce">E-commerce</option>
-            <option value="social-media">Social media and intermediaries</option>
-            <option value="computer-crime">Computer crime</option>
-            <option value="data-protection">Data protection</option>
-            <option value="telecom">Telecommunications</option>
+              <option value="">All areas</option>
+              <option value="corporate">Corporate and commercial</option>
+              <option value="civil">Civil procedure and remedies</option>
+              <option value="evidence">Evidence</option>
+              <option value="competition">Competition</option>
+              <option value="securities">Securities</option>
+              <option value="trade">Foreign trade</option>
+              <option value="labour">Labour and employment</option>
+              <option value="ip">Intellectual property</option>
+              <option value="consumer">Consumer</option>
+              <option value="environment">Environment</option>
+              <option value="banking">Banking and insurance</option>
+              <option value="insolvency">Insolvency</option>
+              <option value="white-collar">White-collar offences</option>
+              <option value="torts">Torts and civil liability</option>
+              <option value="administrative">Administrative and public law</option>
+              <option value="cyber">Cyber law</option>
+              <option value="cyber-security">Cybersecurity compliance</option>
+              <option value="ecommerce">E-commerce</option>
+              <option value="social-media">Social media and intermediaries</option>
+              <option value="computer-crime">Computer crime</option>
+              <option value="data-protection">Data protection</option>
+              <option value="telecom">Telecommunications</option>
             </select>
           </div>
           <button class="button" type="submit">Find instruments</button>
         </form>
         <p id="catalog-status" class="catalog-status" role="status">Checking the instrument index…</p>
         <div class="cards" id="catalog-results" aria-live="polite"></div>
-        <form id="rag-form" class="catalog-controls" role="search"><div class="catalog-field"><label for="rag-query">Search the full source text</label><input id="rag-query" type="search" required minlength="3" maxlength="2000" placeholder="e.g. compensation for breach of contract"></div><button class="button" type="submit">Search RAG passages</button></form><p class="section-note">Uses the selected practice area. Retrieved snapshots are research material; commencement, amendments and legal currency need review.</p><div id="rag-results" class="cards" aria-live="polite"></div>
+        <form id="rag-form" class="catalog-controls" role="search">
+          <div class="catalog-field"><label for="rag-query">Search the full source text</label><input id="rag-query"
+              type="search" required minlength="3" maxlength="2000"
+              placeholder="e.g. compensation for breach of contract"></div><button class="button" type="submit">Search
+            RAG passages</button>
+        </form>
+        <p class="section-note">Uses the selected practice area. Retrieved snapshots are research material;
+          commencement, amendments and legal currency need review.</p>
+        <div id="rag-results" class="cards" aria-live="polite"></div>
         <button id="catalog-more" class="button" type="button" hidden>Show more instruments</button>
       </div>
     </section>
@@ -151,22 +163,22 @@
         <p class="section-note">The official consolidated text keeps some provisions that courts struck down, and some
           amendments were never brought into force. AdvocateVox flags both.</p>
         <div class="cards">
-          <a class="card" href="/lawbuddy/teach?q=Explain%20Article%2021">
+          <a class="card" href="/advocatevox/teach?q=Explain%20Article%2021">
             <span class="tag info">Part III · Fundamental Rights</span>
             <h3>Article 21</h3>
             <p>Protection of life and personal liberty, the provision most read alongside Articles 14 and 19.</p>
           </a>
-          <a class="card" href="/lawbuddy/teach?q=Explain%20Article%20124A">
+          <a class="card" href="/advocatevox/teach?q=Explain%20Article%20124A">
             <span class="tag danger">Struck down, still printed</span>
             <h3>Article 124A (NJAC)</h3>
             <p>Still in the official text, but the Supreme Court struck down the 99th Amendment in 2015.</p>
           </a>
-          <a class="card" href="/lawbuddy/teach?q=Explain%20Article%2022">
+          <a class="card" href="/advocatevox/teach?q=Explain%20Article%2022">
             <span class="tag warn">Never brought into force</span>
             <h3>Article 22</h3>
             <p>Changes made by the 44th Amendment in 1978 still wait for a commencement date.</p>
           </a>
-          <a class="card" href="/lawbuddy/teach?q=Explain%20Article%20330A">
+          <a class="card" href="/advocatevox/teach?q=Explain%20Article%20330A">
             <span class="tag ok">In force 16 Apr 2026</span>
             <h3>Article 330A</h3>
             <p>Reservation of seats for women in the House of the People, under the 106th Amendment.</p>

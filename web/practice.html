@@ -1,34 +1,38 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Practice workbench — AdvocateVox</title>
-  <meta name="description" content="Prepare source-aware working drafts for police information, bail, civil adjournment and legal opinions, with forum and missing-fact checks.">
+  <meta name="description"
+    content="Prepare source-aware working drafts for police information, bail, civil adjournment and legal opinions, with forum and missing-fact checks.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap">
-  <link rel="stylesheet" href="/lawbuddy/assets/lawbuddy.css">
-  <script type="module" src="/lawbuddy/assets/practice.js"></script>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/advocatevox/assets/advocatevox.css">
+  <script type="module" src="/advocatevox/assets/practice.js"></script>
 </head>
+
 <body>
   <header class="topbar">
     <div class="wrap">
-      <a class="brand" href="/lawbuddy" aria-label="AdvocateVox home">
+      <a class="brand" href="/advocatevox" aria-label="AdvocateVox home">
         <span class="brand-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0L5 7zm14 0l-3 6a3 3 0 0 0 6 0l-3-6z"/>
+            <path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0L5 7zm14 0l-3 6a3 3 0 0 0 6 0l-3-6z" />
           </svg>
         </span>
         AdvocateVox
       </a>
       <nav class="nav" aria-label="Main">
-        <a href="/lawbuddy">Home</a>
-        <a href="/lawbuddy/teach">Teach me</a>
-        <a href="/lawbuddy/check">Check my bare act</a>
-        <a href="/lawbuddy/practice" aria-current="page">Practice workbench</a>
-        <a href="/lawbuddy/reports">Reports</a>
+        <a href="/advocatevox">Home</a>
+        <a href="/advocatevox/teach">Teach me</a>
+        <a href="/advocatevox/check">Check my bare act</a>
+        <a href="/advocatevox/practice" aria-current="page">Practice workbench</a>
+        <a href="/advocatevox/reports">Reports</a>
       </nav>
     </div>
   </header>
@@ -38,19 +42,28 @@
       <div>
         <p class="eyebrow">Chamber workbench · early access</p>
         <h1>Prepare the <em>record</em> before the argument.</h1>
-        <p class="lede">Build distinct working drafts for police information, bail, civil adjournment and legal opinions. AdvocateVox separates facts from legal research, checks the chosen forum and exposes missing information.</p>
+        <p class="lede">Build distinct working drafts for police information, bail, civil adjournment and legal
+          opinions. AdvocateVox separates facts from legal research, checks the chosen forum and exposes missing
+          information.</p>
       </div>
       <div class="practice-principle" role="note">
         <strong>Source discipline</strong>
-        <p>Facts stay in this browser. Only statute section and citation queries go to AdvocateVox's library. Nothing in this workbench files a case or sends a complaint. Review every factual statement, authority and local rule before use.</p>
+        <p>Facts stay in this browser. Only statute section and citation queries go to AdvocateVox's library. Nothing in
+          this workbench files a case or sends a complaint. Review every factual statement, authority and local rule
+          before use.</p>
       </div>
     </div>
 
     <div class="practice-layout">
       <section class="practice-input panel" aria-labelledby="intake-title">
         <div class="practice-section-head">
-          <div><p class="eyebrow">01 / Intake</p><h2 id="intake-title">Matter record</h2></div>
-          <select id="saved-matters" aria-label="Open a saved matter"><option value="">Open saved matter…</option></select>
+          <div>
+            <p class="eyebrow">01 / Intake</p>
+            <h2 id="intake-title">Matter record</h2>
+          </div>
+          <select id="saved-matters" aria-label="Open a saved matter">
+            <option value="">Open saved matter…</option>
+          </select>
         </div>
         <form id="practice-form">
           <div class="practice-fields two">
@@ -75,10 +88,17 @@
               <input name="court" autocomplete="off" placeholder="Verify jurisdiction and roster">
             </label>
             <label data-workflows="anticipatory-bail regular-bail">Court level
-              <select name="courtLevel"><option value="">Select forum level…</option><option value="sessions">Court of Session</option><option value="high-court">High Court</option><option value="magistrate">Magistrate</option><option value="other">Other / unsure</option></select>
+              <select name="courtLevel">
+                <option value="">Select forum level…</option>
+                <option value="sessions">Court of Session</option>
+                <option value="high-court">High Court</option>
+                <option value="magistrate">Magistrate</option>
+                <option value="other">Other / unsure</option>
+              </select>
             </label>
             <label data-workflows="fir-information">Police station
-              <input name="policeStation" autocomplete="off" placeholder="Receiving station and district, even if occurrence was elsewhere">
+              <input name="policeStation" autocomplete="off"
+                placeholder="Receiving station and district, even if occurrence was elsewhere">
             </label>
             <label data-workflows="anticipatory-bail regular-bail">Police station named in case record
               <input name="casePoliceStation" autocomplete="off" placeholder="From FIR / case record">
@@ -93,7 +113,8 @@
               <input name="filingDate" type="date">
             </label>
             <label data-workflows="anticipatory-bail regular-bail fir-information">Place of alleged occurrence
-              <input name="incidentPlace" autocomplete="off" placeholder="Locality, district and State; distinct from court or receiving station">
+              <input name="incidentPlace" autocomplete="off"
+                placeholder="Locality, district and State; distinct from court or receiving station">
             </label>
             <label data-workflows="anticipatory-bail regular-bail civil-adjournment">Court district
               <input name="courtDistrict" autocomplete="off" placeholder="District of chosen court">
@@ -108,30 +129,38 @@
               <input name="custodySince" type="date">
             </label>
           </div>
-          <label data-workflows="anticipatory-bail regular-bail civil-adjournment">Why this court has jurisdiction / current listing
-            <textarea name="jurisdictionBasis" rows="2" placeholder="Source for territorial and subject-matter forum; for adjournment, current listing"></textarea>
+          <label data-workflows="anticipatory-bail regular-bail civil-adjournment">Why this court has jurisdiction /
+            current listing
+            <textarea name="jurisdictionBasis" rows="2"
+              placeholder="Source for territorial and subject-matter forum; for adjournment, current listing"></textarea>
           </label>
           <label data-workflows="anticipatory-bail regular-bail">Special statute or special court, if any
-            <input name="specialLaw" placeholder="Copy the exact Act from the case record; check restrictions separately">
+            <input name="specialLaw"
+              placeholder="Copy the exact Act from the case record; check restrictions separately">
           </label>
           <label data-workflows="anticipatory-bail regular-bail fir-information">Sections alleged or proposed
             <input name="offenceSections" placeholder="Copy from FIR or complaint; do not infer">
           </label>
           <label data-workflows="anticipatory-bail regular-bail fir-information">Allegation, in its strongest fair form
-            <textarea name="allegations" rows="3" placeholder="Describe what the complaint or prosecution actually says. Do not soften an adverse fact."></textarea>
+            <textarea name="allegations" rows="3"
+              placeholder="Describe what the complaint or prosecution actually says. Do not soften an adverse fact."></textarea>
           </label>
           <label data-workflows="anticipatory-bail regular-bail fir-information">Dated chronology — one event per line
-            <textarea name="chronology" rows="5" placeholder="Date | event | record or witness supporting it"></textarea>
+            <textarea name="chronology" rows="5"
+              placeholder="Date | event | record or witness supporting it"></textarea>
           </label>
           <label data-workflows="anticipatory-bail regular-bail">Applicant account / response
             <textarea name="response" rows="3" placeholder="Only what your instructions or records support"></textarea>
           </label>
-          <label data-workflows="anticipatory-bail regular-bail fir-information">Evidence and witnesses, with record pages
-            <textarea name="evidence" rows="3" placeholder="Document / witness | what it establishes | page or source"></textarea>
+          <label data-workflows="anticipatory-bail regular-bail fir-information">Evidence and witnesses, with record
+            pages
+            <textarea name="evidence" rows="3"
+              placeholder="Document / witness | what it establishes | page or source"></textarea>
           </label>
           <div class="practice-fields two">
             <label data-workflows="anticipatory-bail">Basis for apprehending arrest
-              <textarea name="arrestConcern" rows="3" placeholder="For anticipatory bail: notice, summons, threat or other record"></textarea>
+              <textarea name="arrestConcern" rows="3"
+                placeholder="For anticipatory bail: notice, summons, threat or other record"></textarea>
             </label>
             <label data-workflows="anticipatory-bail regular-bail">Prior applications and orders
               <textarea name="priorOrders" rows="3" placeholder="Include adverse or withdrawn applications"></textarea>
@@ -140,38 +169,59 @@
               <textarea name="risks" rows="3" placeholder="Address each concern with actual facts"></textarea>
             </label>
             <label data-workflows="anticipatory-bail regular-bail">Adverse facts to disclose and answer
-              <textarea name="adverseFacts" rows="3" placeholder="Anything the other side or bench is likely to raise"></textarea>
+              <textarea name="adverseFacts" rows="3"
+                placeholder="Anything the other side or bench is likely to raise"></textarea>
             </label>
           </div>
           <label data-workflows="anticipatory-bail regular-bail">Proposed grounds — one per line, with source
-            <textarea name="grounds" rows="4" placeholder="Ground | instruction or document | page; do not invent cooperation or innocence"></textarea>
+            <textarea name="grounds" rows="4"
+              placeholder="Ground | instruction or document | page; do not invent cooperation or innocence"></textarea>
           </label>
           <label data-workflows="anticipatory-bail regular-bail">Relief and conditions requested
-            <textarea name="relief" rows="3" placeholder="State the exact relief and any proposed conditions"></textarea>
+            <textarea name="relief" rows="3"
+              placeholder="State the exact relief and any proposed conditions"></textarea>
           </label>
           <div class="practice-fields two" data-workflows="civil-adjournment">
             <label>Current hearing date<input name="hearingDate" type="date"></label>
-            <label>Stage / step listed<input name="hearingStage" placeholder="Evidence, arguments, cross-examination, etc. — from order sheet"></label>
-            <label>Prior adjournments during hearing<input name="priorAdjournments" placeholder="Number, dates and orders; if none, confirm from order sheet"></label>
-            <label>Witnesses present / evidence scheduled<textarea name="witnessStatus" rows="3" placeholder="State what is listed today and whether any witness attends"></textarea></label>
-            <label>Specific cause and source<textarea name="adjournmentReason" rows="3" placeholder="Why time is needed; record or page supporting it"></textarea></label>
-            <label>Steps taken to avoid delay<textarea name="mitigation" rows="3" placeholder="What was tried, when, and why it did not resolve the problem"></textarea></label>
-            <label>Other side notified / response<textarea name="otherSideNotice" rows="3" placeholder="Notice and response, if known; do not assume consent"></textarea></label>
-            <label>Limited accommodation requested<textarea name="adjournmentRelief" rows="3" placeholder="Shortest practical extension or alternative step"></textarea></label>
+            <label>Stage / step listed<input name="hearingStage"
+                placeholder="Evidence, arguments, cross-examination, etc. — from order sheet"></label>
+            <label>Prior adjournments during hearing<input name="priorAdjournments"
+                placeholder="Number, dates and orders; if none, confirm from order sheet"></label>
+            <label>Witnesses present / evidence scheduled<textarea name="witnessStatus" rows="3"
+                placeholder="State what is listed today and whether any witness attends"></textarea></label>
+            <label>Specific cause and source<textarea name="adjournmentReason" rows="3"
+                placeholder="Why time is needed; record or page supporting it"></textarea></label>
+            <label>Steps taken to avoid delay<textarea name="mitigation" rows="3"
+                placeholder="What was tried, when, and why it did not resolve the problem"></textarea></label>
+            <label>Other side notified / response<textarea name="otherSideNotice" rows="3"
+                placeholder="Notice and response, if known; do not assume consent"></textarea></label>
+            <label>Limited accommodation requested<textarea name="adjournmentRelief" rows="3"
+                placeholder="Shortest practical extension or alternative step"></textarea></label>
           </div>
-          <label data-workflows="anticipatory-bail regular-bail civil-adjournment">Actual annexures identified — one per line
-            <textarea name="annexures" rows="3" placeholder="Document | date | page range | whether in hand; blank means none is assumed attached"></textarea>
+          <label data-workflows="anticipatory-bail regular-bail civil-adjournment">Actual annexures identified — one per
+            line
+            <textarea name="annexures" rows="3"
+              placeholder="Document | date | page range | whether in hand; blank means none is assumed attached"></textarea>
           </label>
           <div class="practice-fields" data-workflows="legal-opinion">
-            <label>Precise legal question<textarea name="opinionQuestion" rows="2" placeholder="What conclusion is needed, for whom, and for what decision?"></textarea></label>
-            <label>Jurisdiction and law as-of date<input name="opinionJurisdiction" placeholder="India / State / forum; applicable date and scope"></label>
-            <label>Materials actually reviewed<textarea name="opinionMaterials" rows="3" placeholder="One document per line | version/date | page or source"></textarea></label>
-            <label>Material facts and sources<textarea name="opinionFacts" rows="4" placeholder="Fact | source/page | disputed or accepted"></textarea></label>
-            <label>Unverified instructions and assumptions<textarea name="opinionAssumptions" rows="3" placeholder="State what the conclusion depends on"></textarea></label>
-            <label>Primary authorities to verify<textarea name="opinionAuthorities" rows="4" placeholder="Act/section or judgment/paragraph | official link | applicable date | treatment"></textarea></label>
-            <label>Issue-by-issue analysis and contrary material<textarea name="opinionAnalysis" rows="5" placeholder="Rule, application, strongest contrary fact or authority, limits"></textarea></label>
-            <label>Bounded conclusion<textarea name="opinionConclusion" rows="3" placeholder="Answer only the stated question; say what remains uncertain"></textarea></label>
-            <label>Further research or action<textarea name="opinionNextSteps" rows="3" placeholder="Missing record, research, review or client decision"></textarea></label>
+            <label>Precise legal question<textarea name="opinionQuestion" rows="2"
+                placeholder="What conclusion is needed, for whom, and for what decision?"></textarea></label>
+            <label>Jurisdiction and law as-of date<input name="opinionJurisdiction"
+                placeholder="India / State / forum; applicable date and scope"></label>
+            <label>Materials actually reviewed<textarea name="opinionMaterials" rows="3"
+                placeholder="One document per line | version/date | page or source"></textarea></label>
+            <label>Material facts and sources<textarea name="opinionFacts" rows="4"
+                placeholder="Fact | source/page | disputed or accepted"></textarea></label>
+            <label>Unverified instructions and assumptions<textarea name="opinionAssumptions" rows="3"
+                placeholder="State what the conclusion depends on"></textarea></label>
+            <label>Primary authorities to verify<textarea name="opinionAuthorities" rows="4"
+                placeholder="Act/section or judgment/paragraph | official link | applicable date | treatment"></textarea></label>
+            <label>Issue-by-issue analysis and contrary material<textarea name="opinionAnalysis" rows="5"
+                placeholder="Rule, application, strongest contrary fact or authority, limits"></textarea></label>
+            <label>Bounded conclusion<textarea name="opinionConclusion" rows="3"
+                placeholder="Answer only the stated question; say what remains uncertain"></textarea></label>
+            <label>Further research or action<textarea name="opinionNextSteps" rows="3"
+                placeholder="Missing record, research, review or client decision"></textarea></label>
           </div>
           <div class="practice-actions">
             <button class="button" type="submit">Prepare packet</button>
@@ -186,36 +236,89 @@
 
       <div class="practice-output">
         <section class="panel practice-result" aria-labelledby="packet-title">
-          <div class="practice-section-head"><div><p class="eyebrow">02 / Working packet</p><h2 id="packet-title">Draft and review preparation</h2></div><div class="practice-export-actions"><button type="button" class="button ghost" id="copy-draft" disabled>Copy draft</button><button type="button" class="button" id="export-word" disabled>Download Word</button></div></div>
-          <p class="practice-note" id="packet-note">Enter the facts you have, then prepare a packet. Empty fields remain visible as brackets for review.</p>
+          <div class="practice-section-head">
+            <div>
+              <p class="eyebrow">02 / Working packet</p>
+              <h2 id="packet-title">Draft and review preparation</h2>
+            </div>
+            <div class="practice-export-actions"><button type="button" class="button ghost" id="copy-draft"
+                disabled>Copy draft</button><button type="button" class="button" id="export-word" disabled>Download
+                Word</button></div>
+          </div>
+          <p class="practice-note" id="packet-note">Enter the facts you have, then prepare a packet. Empty fields remain
+            visible as brackets for review.</p>
           <div id="packet-content" hidden>
-            <div class="practice-jump"><a href="#draft-title">Draft</a><a href="#forum-title">Forum checks</a><a href="#gaps-title">Missing facts</a><a href="#arguments-title">Issues</a><a href="#hearing-title">Review</a><a href="#research-title">Research</a></div>
-            <section class="practice-subsection" aria-labelledby="draft-title"><h3 id="draft-title">Working draft</h3><pre class="practice-draft" id="draft-text"></pre></section>
-            <section class="practice-subsection" aria-labelledby="forum-title"><h3 id="forum-title">Forum and legal restrictions</h3><div id="blocker-panel" class="practice-blocker" hidden><strong>Stop before using this draft</strong><ul id="blockers-list"></ul></div><ul id="forum-list"></ul></section>
-            <section class="practice-subsection" aria-labelledby="gaps-title"><h3 id="gaps-title">Facts to confirm</h3><ul id="gaps-list"></ul></section>
-            <section class="practice-subsection" aria-labelledby="arguments-title"><h3 id="arguments-title">Argument and opposition grid</h3><div id="argument-grid"></div></section>
-            <section class="practice-subsection" aria-labelledby="hearing-title"><h3 id="hearing-title">Review preparation</h3><ol id="hearing-list"></ol></section>
-            <section class="practice-subsection" aria-labelledby="research-title"><h3 id="research-title">Statute and case research</h3><div id="law-results"></div><div id="case-results"></div></section>
+            <div class="practice-jump"><a href="#draft-title">Draft</a><a href="#forum-title">Forum checks</a><a
+                href="#gaps-title">Missing facts</a><a href="#arguments-title">Issues</a><a
+                href="#hearing-title">Review</a><a href="#research-title">Research</a></div>
+            <section class="practice-subsection" aria-labelledby="draft-title">
+              <h3 id="draft-title">Working draft</h3>
+              <pre class="practice-draft" id="draft-text"></pre>
+            </section>
+            <section class="practice-subsection" aria-labelledby="forum-title">
+              <h3 id="forum-title">Forum and legal restrictions</h3>
+              <div id="blocker-panel" class="practice-blocker" hidden><strong>Stop before using this draft</strong>
+                <ul id="blockers-list"></ul>
+              </div>
+              <ul id="forum-list"></ul>
+            </section>
+            <section class="practice-subsection" aria-labelledby="gaps-title">
+              <h3 id="gaps-title">Facts to confirm</h3>
+              <ul id="gaps-list"></ul>
+            </section>
+            <section class="practice-subsection" aria-labelledby="arguments-title">
+              <h3 id="arguments-title">Argument and opposition grid</h3>
+              <div id="argument-grid"></div>
+            </section>
+            <section class="practice-subsection" aria-labelledby="hearing-title">
+              <h3 id="hearing-title">Review preparation</h3>
+              <ol id="hearing-list"></ol>
+            </section>
+            <section class="practice-subsection" aria-labelledby="research-title">
+              <h3 id="research-title">Statute and case research</h3>
+              <div id="law-results"></div>
+              <div id="case-results"></div>
+            </section>
           </div>
         </section>
         <section class="panel practice-catalog" aria-labelledby="catalog-title">
-          <p class="eyebrow">Document architecture</p><h2 id="catalog-title">Five families, distinct formats</h2>
-          <p><strong>Transactional:</strong> agreements, wills, trusts and deeds require party capacity, operative clauses, consideration or property, execution and registration checks.</p>
-          <p><strong>Litigation:</strong> the four workflows above have separate criminal, police and civil procedural structures. Petitions, plaints, appeals, revisions, witness/evidence applications and settlements need their own schemas.</p>
-          <p><strong>Legislative:</strong> Bills and ordinances need competence, enabling basis, clause structure, commencement, repeal and delegated-power review.</p>
-          <p><strong>Policy:</strong> schemes, guidelines and government notices need authority, eligibility, implementation, grievance and impact checks; a statutory notification may belong with legislative drafting.</p>
-          <p><strong>Research:</strong> the working legal opinion above separates its question, source facts, assumptions, dated primary authorities, contrary law, analysis and bounded conclusion.</p>
-          <p class="research-note">A memorandum of understanding is normally transactional. An instrument’s legal effect and forum determine its schema, not its title alone. Additional instruments are mapped in the design report and require their own validated workflows.</p>
+          <p class="eyebrow">Document architecture</p>
+          <h2 id="catalog-title">Five families, distinct formats</h2>
+          <p><strong>Transactional:</strong> agreements, wills, trusts and deeds require party capacity, operative
+            clauses, consideration or property, execution and registration checks.</p>
+          <p><strong>Litigation:</strong> the four workflows above have separate criminal, police and civil procedural
+            structures. Petitions, plaints, appeals, revisions, witness/evidence applications and settlements need their
+            own schemas.</p>
+          <p><strong>Legislative:</strong> Bills and ordinances need competence, enabling basis, clause structure,
+            commencement, repeal and delegated-power review.</p>
+          <p><strong>Policy:</strong> schemes, guidelines and government notices need authority, eligibility,
+            implementation, grievance and impact checks; a statutory notification may belong with legislative drafting.
+          </p>
+          <p><strong>Research:</strong> the working legal opinion above separates its question, source facts,
+            assumptions, dated primary authorities, contrary law, analysis and bounded conclusion.</p>
+          <p class="research-note">A memorandum of understanding is normally transactional. An instrument’s legal effect
+            and forum determine its schema, not its title alone. Additional instruments are mapped in the design report
+            and require their own validated workflows.</p>
         </section>
         <section class="panel practice-citation" aria-labelledby="citation-title">
-          <p class="eyebrow">Case identity check</p><h2 id="citation-title">Verify a citation</h2>
-          <p>Resolve a citation to the Supreme Court index. A match confirms identity only; read the judgment for its holding, paragraph and later treatment.</p>
-          <div class="practice-citation-row"><input id="citation-input" aria-label="Case citation" placeholder="e.g. 2023 INSC 1"><button class="button ghost" id="citation-check" type="button">Check</button></div>
+          <p class="eyebrow">Case identity check</p>
+          <h2 id="citation-title">Verify a citation</h2>
+          <p>Resolve a citation to the Supreme Court index. A match confirms identity only; read the judgment for its
+            holding, paragraph and later treatment.</p>
+          <div class="practice-citation-row"><input id="citation-input" aria-label="Case citation"
+              placeholder="e.g. 2023 INSC 1"><button class="button ghost" id="citation-check"
+              type="button">Check</button></div>
           <div id="citation-result" role="status"></div>
         </section>
       </div>
     </div>
   </main>
-  <footer class="footer"><div class="wrap"><p>AdvocateVox prepares research and drafts for professional review. Verify the operative law, record, forum and filing rules. It does not replace an advocate's judgment.</p></div></footer>
+  <footer class="footer">
+    <div class="wrap">
+      <p>AdvocateVox prepares research and drafts for professional review. Verify the operative law, record, forum and
+        filing rules. It does not replace an advocate's judgment.</p>
+    </div>
+  </footer>
 </body>
+
 </html>
