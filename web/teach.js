@@ -253,7 +253,7 @@ document.getElementById('voice-preview').addEventListener('click', () => {
   voice.reset();
   if (narrator.value === 'auto') voiceNote.textContent = 'Preview uses the browser fallback. The server narrator is heard during an answer.';
   const generation = voice.generation; voice.playing = true; stopButton.hidden = false;
-  voice.speak('Welcome to LawBuddy. Let us read the law carefully, one provision at a time.').finally(() => { if (generation === voice.generation) { voice.playing = false; stopButton.hidden = !streaming; } });
+  voice.speak('Welcome to AdvocateVox. Let us read the law carefully, one provision at a time.').finally(() => { if (generation === voice.generation) { voice.playing = false; stopButton.hidden = !streaming; } });
 });
 
 const splitSentences = (text) =>
@@ -361,7 +361,7 @@ const absenceCard = (source) =>
     ]),
     el('div', { className: 'notice warn', attrs: { role: 'note' } }, [
       el('strong', { text: 'Not in the official text' }),
-      document.createTextNode('LawBuddy could not find this provision in force in the stored official edition, so it will not describe it.'),
+      document.createTextNode('AdvocateVox could not find this provision in force in the stored official edition, so it will not describe it.'),
     ]),
   ]);
 
@@ -371,7 +371,7 @@ const correspondenceCard = (source, lookup) =>
       el('p', {
         className: 'provision-kicker',
         text: (lookup.matches || []).every((match) => match.method === 'alignment')
-          ? 'Old and new law, matched by LawBuddy from the two texts (not the official MHA table)'
+          ? 'Old and new law, matched by AdvocateVox from the two texts (not the official MHA table)'
           : 'Official correspondence table (MHA/NCRB Sankalan)',
       }),
       el('h3', { text: lookup.query || source.title }),
@@ -388,12 +388,12 @@ const renderEvidence = (sources, id, analysis = null) => {
     const missingText = missing.length === 1 ? `section ${missing[0].label.slice(2)}` : `sections ${missing.map((item) => item.label.slice(2)).join(' and ')}`;
     const reviewed = missing.filter((item) => item.reviewedThrough);
     const cyberMessage = reviewed.length
-      ? `This is a cyber-law question. IT Act ${missingText} ${missing.length === 1 ? 'is' : 'are'} needed, but ${reviewed.map((item) => `section ${item.label.slice(2)} was reviewed only through ${item.reviewedThrough}`).join('; ')}. LawBuddy cannot assess the case for the requested date from older text or FIR provisions alone.`
-      : `This is a cyber-law question. The verified text of IT Act ${missingText} is not indexed here yet, so LawBuddy cannot assess your case from the FIR provisions alone.`;
+      ? `This is a cyber-law question. IT Act ${missingText} ${missing.length === 1 ? 'is' : 'are'} needed, but ${reviewed.map((item) => `section ${item.label.slice(2)} was reviewed only through ${item.reviewedThrough}`).join('; ')}. AdvocateVox cannot assess the case for the requested date from older text or FIR provisions alone.`
+      : `This is a cyber-law question. The verified text of IT Act ${missingText} is not indexed here yet, so AdvocateVox cannot assess your case from the FIR provisions alone.`;
     evidence.replaceChildren(
       el('p', { className: 'empty', text: cyberGap
         ? cyberMessage
-        : 'No official text matched this question, so LawBuddy will not answer it from memory. Try naming a provision, such as “Article 21”.' }),
+        : 'No official text matched this question, so AdvocateVox will not answer it from memory. Try naming a provision, such as “Article 21”.' }),
       ...(cyberGap ? [el('p', {}, [document.createTextNode('Read the '), safeLink('https://indiacode.gov.in/', 'India Code portal'), document.createTextNode(' and speak with an Indian cybercrime lawyer if a complaint or FIR has been filed.')])] : []),
     );
     return;
@@ -440,7 +440,7 @@ const KIND_TEXT = Object.freeze({
   general: 'a general question about the law',
 });
 
-/** How LawBuddy read the question: its kind and the legal concepts it maps to. */
+/** How AdvocateVox read the question: its kind and the legal concepts it maps to. */
 const showReading = (analysis) => {
   if (!analysis) {
     reading.hidden = true;
@@ -448,7 +448,7 @@ const showReading = (analysis) => {
   }
   const concepts = (analysis.concepts || []).map((concept) => concept.name);
   reading.replaceChildren(
-    el('strong', { text: 'How LawBuddy read your question: ' }),
+    el('strong', { text: 'How AdvocateVox read your question: ' }),
     document.createTextNode(`${KIND_TEXT[analysis.kind] || KIND_TEXT.general}.${concepts.length ? ` Legal concepts: ${concepts.join('; ')}.` : ''}`),
     ...(analysis.warnings || []).filter((warning) => /needed to answer this question/.test(warning))
       .map((warning) => el('span', { className: 'reading-warning', text: ` ${warning}` })),
@@ -465,7 +465,7 @@ const showCheck = (check) => {
   const failures = [
     ...check.citations.filter((citation) => !citation.ok).map((citation) => (citation.problem
       ? `[${citation.tag}]: ${citation.problem}.`
-      : `[${citation.tag}] is not one of the provisions LawBuddy retrieved for this answer.`)),
+      : `[${citation.tag}] is not one of the provisions AdvocateVox retrieved for this answer.`)),
     ...check.quotes.filter((quote) => !quote.ok).map((quote) => `“${quote.text}” is not word for word in the official text: read the provision itself.`),
     ...check.quotes.filter((quote) => quote.cutBefore).map((quote) => `“${quote.text}” stops just before a condition in [${quote.source}]: “${quote.cutBefore}…”. The rule is narrower than the quotation suggests.`),
   ];
@@ -595,7 +595,7 @@ const teach = async (text) => {
     });
     if (!response.ok || !response.body) {
       const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || `LawBuddy could not answer (HTTP ${response.status}).`);
+      throw new Error(body.error || `AdvocateVox could not answer (HTTP ${response.status}).`);
     }
 
     await readEvents(response, (event, data) => {
@@ -637,7 +637,7 @@ const teach = async (text) => {
         setStatus('Checking every claim against the law…');
         for (const sentence of splitSentences(answer.textContent)) voice.enqueue({ text: sentence });
       } else if (event === 'error') {
-        showError(data.error || 'LawBuddy could not finish this answer.');
+        showError(data.error || 'AdvocateVox could not finish this answer.');
       }
     });
   } catch (error) {
@@ -646,7 +646,7 @@ const teach = async (text) => {
     if (id === runId) {
       // Never leave a "Done" with an empty box under a grounding badge.
       if (errorBox.hidden && !answer.textContent.trim() && !controller.signal.aborted) {
-        showError('LawBuddy received no explanation this time. Please ask again.');
+        showError('AdvocateVox received no explanation this time. Please ask again.');
       }
       setBusy(false);
       if (!voice.playing) setStatus(errorBox.hidden ? 'Done.' : 'Stopped.');

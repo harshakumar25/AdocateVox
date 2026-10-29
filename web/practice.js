@@ -56,12 +56,12 @@ const loadSaved = async () => {
 const getLaw = async (lead, asOf, signal) => {
   if (lead.act === 'CPC') return {
     act: lead.act, label: `s.${lead.section}`,
-    error: 'Order XVII rule 1 is not in LawBuddy’s dated section library. Check the official Code, amendments and current court directions.',
+    error: 'Order XVII rule 1 is not in AdvocateVox’s dated section library. Check the official Code, amendments and current court directions.',
     sourceUrl: CPC_SOURCE,
   };
   if (lead.act === 'CrPC') return {
     act: lead.act, label: `s.${lead.section}`,
-    error: 'Historical CrPC text is not in LawBuddy’s dated library. Inspect the official edition, State amendments and transitional provisions.',
+    error: 'Historical CrPC text is not in AdvocateVox’s dated library. Inspect the official edition, State amendments and transitional provisions.',
     sourceUrl: CRPC_SOURCE,
   };
   const url = `/lawbuddy/api/section/${lead.act}/${lead.section}${asOf ? `?asOf=${encodeURIComponent(asOf)}` : ''}`;

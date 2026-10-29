@@ -283,7 +283,7 @@ export const buildPracticePacket = (matter, { laws = [], cases = [] } = {}) => {
   const gaps = intakeGaps(matter);
   const historicalFiling = !['civil-adjournment', 'legal-opinion'].includes(kind) && clean(matter.filingDate) && matter.filingDate < CRIMINAL_CODE_TRANSITION;
   const transition = historicalFiling
-    ? 'The planned filing date predates 1 July 2024. The research leads use the CrPC; LawBuddy does not yet hold verified historical section text. Check the official edition and State amendments.'
+    ? 'The planned filing date predates 1 July 2024. The research leads use the CrPC; AdvocateVox does not yet hold verified historical section text. Check the official edition and State amendments.'
     : !['civil-adjournment', 'legal-opinion'].includes(kind) && clean(matter.incidentDate) && matter.incidentDate < CRIMINAL_CODE_TRANSITION
       ? 'The incident predates 1 July 2024. Check the old codes, the new codes’ repeal-and-savings clauses, and the procedural stage before choosing provisions.'
       : null;

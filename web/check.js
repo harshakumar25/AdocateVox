@@ -19,10 +19,10 @@ const VERDICTS = Object.freeze({
   'nothing-to-check': ['', 'Nothing to check'],
 });
 const KIND_TEXT = Object.freeze({
-  'act-copy': 'a copy of an Act LawBuddy holds in its official text',
+  'act-copy': 'a copy of an Act AdvocateVox holds in its official text',
   repealed: 'a copy of a repealed code',
   'write-up': 'a write-up (notes, an article or an answer) about the law',
-  unsupported: 'an Act-like document LawBuddy cannot compare yet',
+  unsupported: 'an Act-like document AdvocateVox cannot compare yet',
 });
 
 const form = document.getElementById('check-form');
@@ -108,11 +108,11 @@ const scopeOf = (report) => {
 
 const actCopySummary = (report) => {
   if (report.verdict === 'official') {
-    return `This PDF has the same SHA-256 fingerprint as the source file imported into LawBuddy for ${report.act}. Confirm that the imported source is current before relying on it.`;
+    return `This PDF has the same SHA-256 fingerprint as the source file imported into AdvocateVox for ${report.act}. Confirm that the imported source is current before relying on it.`;
   }
   const counts = report.counts;
   if (!counts) return report.summary;
-  const parts = [`LawBuddy located ${counts.present} of ${counts.comparable} comparable provisions in the uploaded PDF.`];
+  const parts = [`AdvocateVox located ${counts.present} of ${counts.comparable} comparable provisions in the uploaded PDF.`];
   if (counts.reworded) parts.push(`${counts.reworded} difference${counts.reworded === 1 ? '' : 's'} need review.`);
   if (counts.explained) parts.push(`${counts.explained} difference${counts.explained === 1 ? '' : 's'} have judicial or commencement notes to review.`);
   if (absentCount(report)) parts.push(`${absentCount(report)} provision${absentCount(report) === 1 ? ' was' : 's were'} not located.`);
@@ -128,7 +128,7 @@ const actCopyGroups = (report) => {
   if (scope === 'extract') {
     groups.push(el('div', { className: 'notice warn partial' }, [
       el('strong', { text: 'Appears to be an extract' }),
-      document.createTextNode(`LawBuddy located ${report.counts.present} of ${report.counts.comparable} comparable provisions. It checked the text it could locate; provisions outside an extract still need separate checking.`),
+      document.createTextNode(`AdvocateVox located ${report.counts.present} of ${report.counts.comparable} comparable provisions. It checked the text it could locate; provisions outside an extract still need separate checking.`),
     ]));
   } else if (scope === 'apparently-incomplete') {
     groups.push(el('div', { className: 'notice warn partial' }, [
@@ -171,7 +171,7 @@ const actCopyGroups = (report) => {
   if (!report.reworded?.length && !report.newerThanCopy?.length && !report.explained?.length && !absent) {
     groups.push(el('p', { className: 'empty', text: report.verdict === 'official'
       ? 'The upload is the same file as the imported source.'
-      : 'No difference was detected in the provisions LawBuddy could locate.' }));
+      : 'No difference was detected in the provisions AdvocateVox could locate.' }));
   }
   return groups;
 };
@@ -199,13 +199,13 @@ const lookupBox = (report) => {
     const { body } = await fetchJson(`/lawbuddy/api/lookup?${params}`).catch(() => ({ body: {} }));
     result.replaceChildren(...(body.matches?.length
       ? body.matches.map((match) => el('p', { text: `${match.old} → ${match.new}${match.shared ? ` (${Math.round(match.shared * 100)}% of the new wording carried over)` : ''}` }))
-      : [el('p', { className: 'empty', text: `LawBuddy found no section of the new code carrying forward ${report.actCode} s.${section}: it may have been merged, reworded or omitted.` })]));
+      : [el('p', { className: 'empty', text: `AdvocateVox found no section of the new code carrying forward ${report.actCode} s.${section}: it may have been merged, reworded or omitted.` })]));
   });
   return el('section', { className: 'diff-group' }, [
     el('h3', { text: 'Which section replaced it?' }),
     el('div', { className: 'lookup' }, [input, go]),
     result,
-    el('p', { className: 'group-note', text: 'Matched by LawBuddy from the two texts, not the official MHA table.' }),
+    el('p', { className: 'group-note', text: 'Matched by AdvocateVox from the two texts, not the official MHA table.' }),
   ]);
 };
 
@@ -222,7 +222,7 @@ const repealedGroups = (report) => [
 const unsupportedGroups = (report) => [
   el('div', { className: 'notice warn partial' }, [
     el('strong', { text: 'No section-level check was run' }),
-    document.createTextNode('This appears to be an Act that LawBuddy does not yet hold as an imported official source. Review it against the relevant Gazette or India Code publication.'),
+    document.createTextNode('This appears to be an Act that AdvocateVox does not yet hold as an imported official source. Review it against the relevant Gazette or India Code publication.'),
   ]),
   report.identified?.words ? el('p', { className: 'group-note', text: `${report.identified.words} words were extracted, but readable text alone cannot establish whether the Act is current.` }) : null,
 ].filter(Boolean);
@@ -240,7 +240,7 @@ const STATUS_TEXT = Object.freeze({
   approximate: ['warn', 'Similar wording found'],
   altered: ['danger', 'Not the law\'s wording'],
   'cut-before-condition': ['warn', 'Stops before a condition'],
-  unmatched: ['', 'Not a provision LawBuddy holds'],
+  unmatched: ['', 'Not a provision AdvocateVox holds'],
   verified: ['ok', 'Citation matched index'],
   'name-mismatch': ['danger', 'Wrong case for this citation'],
   overruled: ['danger', 'Overruled'],
@@ -273,8 +273,8 @@ const writeUpGroups = (report) => {
       pageEvidence(reference),
       reference.status === 'repealed'
         ? el('p', { text: reference.successors.length
-          ? `Replaced by ${reference.successors.map((successor) => `${successor.tag}${successor.heading ? ` (${successor.heading})` : ''}`).join('; ')}. Matched by LawBuddy from the two texts.`
-          : `Repealed by ${reference.repealedBy}; LawBuddy found no section carrying its wording forward.` })
+          ? `Replaced by ${reference.successors.map((successor) => `${successor.tag}${successor.heading ? ` (${successor.heading})` : ''}`).join('; ')}. Matched by AdvocateVox from the two texts.`
+          : `Repealed by ${reference.repealedBy}; AdvocateVox found no section carrying its wording forward.` })
         : null,
     ])));
   }
@@ -333,7 +333,7 @@ const render = (report) => {
   verdictBadge.textContent = text;
   verdictBadge.hidden = false;
   const resultSummary = report.kind === 'act-copy' ? actCopySummary(report) : report.summary;
-  summary.textContent = `LawBuddy read this as ${KIND_TEXT[report.kind] || 'a document'}${report.act ? ` (${report.act})` : ''}. ${resultSummary || 'This document could not be fully checked.'}`;
+  summary.textContent = `AdvocateVox read this as ${KIND_TEXT[report.kind] || 'a document'}${report.act ? ` (${report.act})` : ''}. ${resultSummary || 'This document could not be fully checked.'}`;
   summary.hidden = false;
 
   const kindFacts = report.kind === 'act-copy' ? actCopyFacts(report) : report.kind === 'write-up' ? writeUpFacts(report) : [];
@@ -343,7 +343,7 @@ const render = (report) => {
       : report.kind === 'unsupported' ? unsupportedGroups(report)
         : writeUpGroups(report);
   if (report.kind !== 'unsupported') {
-    groups.push(el('p', { className: 'source-caveat', text: 'This check uses official sources imported into LawBuddy. Check for later amendments, commencement notifications and decisions before relying on their current status.' }));
+    groups.push(el('p', { className: 'source-caveat', text: 'This check uses official sources imported into AdvocateVox. Check for later amendments, commencement notifications and decisions before relying on their current status.' }));
   }
   changes.replaceChildren(...groups);
 };
@@ -384,7 +384,7 @@ form.addEventListener('submit', async (event) => {
     render(body);
   } catch {
     statusLine.textContent = 'The check did not complete.';
-    showError('Could not reach LawBuddy. Is the server running?');
+    showError('Could not reach AdvocateVox. Is the server running?');
   } finally {
     button.disabled = false;
   }

@@ -25,7 +25,7 @@ const actCard = (act) =>
 
 const tableCard = (table) =>
   el('div', { className: 'card' }, [
-    el('span', { className: `tag ${table.method === 'official' ? 'info' : 'warn'}`, text: table.method === 'official' ? 'Official correspondence table' : table.method === 'alignment' ? 'LawBuddy text alignment' : 'Correspondence source needs review' }),
+    el('span', { className: `tag ${table.method === 'official' ? 'info' : 'warn'}`, text: table.method === 'official' ? 'Official correspondence table' : table.method === 'alignment' ? 'AdvocateVox text alignment' : 'Correspondence source needs review' }),
     el('h3', { text: table.table }),
     el('p', {}, [el('span', { className: 'stat', text: table.rows.toLocaleString('en-IN') }), document.createTextNode(' mapped rows')]),
     table.sourceUrl ? el('p', {}, [document.createTextNode(table.method === 'alignment' ? 'Compared copy: ' : 'Source: '), safeLink(table.sourceUrl, hostOf(table.sourceUrl))]) : null,
@@ -63,7 +63,7 @@ const catalogCard = (item) => el('article', { className: 'card' }, [
 
 const showCatalog = () => {
   const shown = catalogItems.slice(0, catalogVisible);
-  catalogStatus.textContent = catalogNotice || `${catalogItems.length} instrument${catalogItems.length === 1 ? '' : 's'} matched · ${shown.length} shown. “Source identified” means provision text is not yet available for LawBuddy answers.`;
+  catalogStatus.textContent = catalogNotice || `${catalogItems.length} instrument${catalogItems.length === 1 ? '' : 's'} matched · ${shown.length} shown. “Source identified” means provision text is not yet available for AdvocateVox answers.`;
   catalogResults.replaceChildren(...(shown.length ? shown.map(catalogCard) : [el('p', { className: 'empty', text: 'No Indian instrument matched. Try a precise title or another practice area.' })]));
   catalogMore.hidden = shown.length >= catalogItems.length;
 };

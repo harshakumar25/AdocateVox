@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Check my bare act — LawBuddy</title>
-  <meta name="description" content="Upload a bare act or legal notes for an evidence-linked comparison with LawBuddy's imported official sources.">
+  <title>Check my bare act — AdvocateVox</title>
+  <meta name="description" content="Upload a bare act or legal notes for an evidence-linked comparison with AdvocateVox's imported official sources.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap">
@@ -14,11 +14,14 @@
 <body>
   <header class="topbar">
     <div class="wrap">
-      <a class="brand" href="/lawbuddy" aria-label="LawBuddy home">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0L5 7zm14 0l-3 6a3 3 0 0 0 6 0l-3-6z"/>
-        </svg>
-        LawBuddy
+      <a class="brand" href="/lawbuddy" aria-label="AdvocateVox home">
+        <span class="brand-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0L5 7zm14 0l-3 6a3 3 0 0 0 6 0l-3-6z"/>
+          </svg>
+        </span>
+        AdvocateVox
       </a>
       <nav class="nav" aria-label="Main">
         <a href="/lawbuddy">Home</a>
@@ -34,7 +37,7 @@
     <div class="wrap">
       <p class="eyebrow">Check my bare act, or my notes</p>
       <h1>Is what you are reading <em>accurate law</em>?</h1>
-      <p class="lede">Upload a bare act PDF, notes, an article, an answer or a commentary. LawBuddy identifies the document and compares the parts it can read with official sources imported into its library. It reports differences, missing provisions and citations that need review.</p>
+      <p class="lede">Upload a bare act PDF, notes, an article, an answer or a commentary. AdvocateVox identifies the document and compares the parts it can read with official sources imported into its library. It reports differences, missing provisions and citations that need review.</p>
 
       <form class="upload" id="check-form">
         <label for="file">Your PDF (up to 30 MB)
@@ -50,7 +53,7 @@
         <p class="upload-disclosure" id="upload-disclosure">Your PDF is processed temporarily and deleted. If you turn off local-only processing, selected claim text and official excerpts may be sent to Groq for AI analysis when the server is configured to use it. Do not upload confidential client material unless that use is appropriate.</p>
         <button class="button" type="submit" id="check">Check it</button>
       </form>
-      <p class="section-note">Checks copies of the Constitution of India, the Bharatiya Nyaya Sanhita, the Bharatiya Nagarik Suraksha Sanhita and the Bharatiya Sakshya Adhiniyam; recognises copies of the repealed IPC, CrPC and Evidence Act; and examines write-ups that cite them. Your uploaded PDF is deleted after processing. Results reflect the official sources imported into LawBuddy's library, which may need a freshness check for later amendments, commencement notices and judgments.</p>
+      <p class="section-note">Checks copies of the Constitution of India, the Bharatiya Nyaya Sanhita, the Bharatiya Nagarik Suraksha Sanhita and the Bharatiya Sakshya Adhiniyam; recognises copies of the repealed IPC, CrPC and Evidence Act; and examines write-ups that cite them. Your uploaded PDF is deleted after processing. Results reflect the official sources imported into AdvocateVox's library, which may need a freshness check for later amendments, commencement notices and judgments.</p>
 
       <div class="grid">
         <section class="panel" aria-labelledby="verdict-title">
@@ -66,10 +69,10 @@
 
         <aside class="panel" aria-labelledby="changes-title">
           <div class="panel-head">
-            <h2 class="panel-title" id="changes-title">What LawBuddy found</h2>
+            <h2 class="panel-title" id="changes-title">What AdvocateVox found</h2>
           </div>
           <div id="changes">
-            <p class="empty">Upload a PDF to see the provisions LawBuddy could compare, differences it found and anything that needs manual review.</p>
+            <p class="empty">Upload a PDF to see the provisions AdvocateVox could compare, differences it found and anything that needs manual review.</p>
           </div>
         </aside>
       </div>
@@ -78,7 +81,7 @@
 
   <footer class="footer">
     <div class="wrap">
-      <p>LawBuddy provides legal information for learning. It is not legal advice and does not replace a lawyer.</p>
+      <p>AdvocateVox provides legal information for learning. It is not legal advice and does not replace a lawyer.</p>
       <p>Need legal help? Free legal aid is available through NALSA (helpline 15100) and your State Legal Services Authority.</p>
     </div>
   </footer>

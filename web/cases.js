@@ -96,7 +96,7 @@ export const createCasesView = ({ pointsTable, pointsBody, pointsEmpty, pointsTi
         safeLink(pageLink(item.pdfUrl, item.page), `${titleCase(item.title)} (${year(item.decidedOn)}${benchText(item.benchStrength)})`),
         document.createTextNode(item.binding
           ? `: "${item.printed}" in that report's list of cases cited${item.page ? `, PDF page ${item.page}` : ''}.`
-          : `: "${item.printed}" in that report, but a smaller bench cannot overrule a larger one, so LawBuddy does not treat it as overruled.`),
+          : `: "${item.printed}" in that report, but a smaller bench cannot overrule a larger one, so AdvocateVox does not treat it as overruled.`),
       ]))),
     ]);
   };
