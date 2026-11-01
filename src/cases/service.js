@@ -1,6 +1,6 @@
 /**
  * Supreme Court judgments for a provision of the Constitution, ranked by
- * precedent points (see rank.js), for the CLI and GET /lawbuddy/api/cases.
+ * precedent points (see rank.js), for the CLI and GET /advocatevox/api/cases.
  *
  * When no indexed judgment's headnote names the provision itself, judgments
  * whose full text discusses it are offered (relation 'text'); failing that, the
@@ -125,7 +125,7 @@ const decidedByDate = (rows, date) => date
 /**
  * Supreme Court judgments on a section of a criminal code. The new codes are recent, so most of what the
  * Court has said about a BNS section it said about the IPC section the BNS carries forward: those judgments
- * are found through the correspondence (LawBuddy's alignment of the two official texts, which says whether
+ * are found through the correspondence (AdvocateVox's alignment of the two official texts, which says whether
  * the wording was carried forward unchanged or reworded), and each card names the section the Court applied.
  */
 const casesForSection = (store, { act, label, limit, decidedBy }) => {
@@ -152,7 +152,7 @@ const casesForSection = (store, { act, label, limit, decidedBy }) => {
     consider(
       store.casesForProvision({ act: row.old_act, label: row.old_label }),
       old,
-      `Decided under ${old} (${CODE_NAMES[row.old_act]}), which ${act} ${row.new_label} carries forward${row.changed ? ' with changes to its wording' : ' unchanged'} (LawBuddy's alignment of the two official texts, not the official correspondence table).`,
+      `Decided under ${old} (${CODE_NAMES[row.old_act]}), which ${act} ${row.new_label} carries forward${row.changed ? ' with changes to its wording' : ' unchanged'} (AdvocateVox's alignment of the two official texts, not the official correspondence table).`,
       true,
     );
   }

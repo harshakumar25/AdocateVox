@@ -2,7 +2,7 @@
  * Builds and stores the old ↔ new correspondence for a repealed code (IPC → BNS, CrPC → BNSS,
  * IEA → BSA) from the library's official text of the new code and a stored bare-act copy of the old one.
  * Rows go into provision_mapping with the old copy as their source, so every lookup can say they are
- * LawBuddy's text alignment and not the official MHA/NCRB table.
+ * AdvocateVox's text alignment and not the official MHA/NCRB table.
  */
 
 import { runTextWorker } from '../cases/textIndex.js';

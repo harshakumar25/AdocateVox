@@ -1,6 +1,6 @@
 /**
  * Manual import: a person downloads an official document in their browser
- * (for sites whose firewall blocks declared bots) and LawBuddy takes it from
+ * (for sites whose firewall blocks declared bots) and AdvocateVox takes it from
  * there. The original URL must belong to a registered source, the file goes
  * into the same content-addressed vault, and fetch_log marks it 'manual' so
  * provenance is never confused with an automatic fetch.

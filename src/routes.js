@@ -51,7 +51,7 @@ const fetcherFor = (store) => {
   return fetchers.get(store);
 };
 
-/** POST /lawbuddy/api/cases/:id/brief — the verified brief of one judgment, prepared once and cached. */
+/** POST /advocatevox/api/cases/:id/brief (also /lawbuddy/api/...) — the verified brief of one judgment, prepared once and cached. */
 const handleCaseBrief = async (store, caseId, parsedUrl, prepareBrief) => {
   try {
     return await queuePdfWork(() => prepareBrief({
@@ -62,7 +62,7 @@ const handleCaseBrief = async (store, caseId, parsedUrl, prepareBrief) => {
   }
 };
 
-/** POST /lawbuddy/api/copy-check — "Is my bare act current?" for an uploaded PDF. */
+/** POST /advocatevox/api/copy-check (also /lawbuddy/api/...) — "Is my bare act current?" for an uploaded PDF. */
 const handleCopyUpload = async (req, store, parsedUrl, checkUpload) => {
   if (!/^application\/pdf\b/i.test(req.headers['content-type'] || '')) {
     req.resume();
@@ -86,8 +86,9 @@ const handleCopyUpload = async (req, store, parsedUrl, checkUpload) => {
 };
 
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LAWBUDDY_WEB_DIR = path.resolve(PKG_ROOT, 'web');
-const LOCAL_VOICE_SELECTOR = path.join(LAWBUDDY_WEB_DIR, 'voiceSelector.js');
+const ADVOCATEVOX_WEB_DIR = path.resolve(PKG_ROOT, 'web');
+const LAWBUDDY_WEB_DIR = ADVOCATEVOX_WEB_DIR;
+const LOCAL_VOICE_SELECTOR = path.join(ADVOCATEVOX_WEB_DIR, 'voiceSelector.js');
 const SHARED_VOICE_SELECTOR = path.resolve(PKG_ROOT, '../docvex/extension/voiceSelector.js');
 const MONO_VOICE_SELECTOR = path.resolve(PKG_ROOT, '../../extension/voiceSelector.js');
 
@@ -98,7 +99,7 @@ const resolveVoiceSelector = () => {
   return LOCAL_VOICE_SELECTOR;
 };
 
-export const LAWBUDDY_SECURITY_HEADERS = Object.freeze({
+export const ADVOCATEVOX_SECURITY_HEADERS = Object.freeze({
   'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; "
     + "font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; "
     + "base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
@@ -106,33 +107,34 @@ export const LAWBUDDY_SECURITY_HEADERS = Object.freeze({
   'Referrer-Policy': 'no-referrer',
   'Cache-Control': 'no-cache',
 });
+export const LAWBUDDY_SECURITY_HEADERS = ADVOCATEVOX_SECURITY_HEADERS;
 
-export const getLawBuddyFiles = () => {
+export const getAdvocateVoxFiles = () => {
   const voiceSelectorPath = resolveVoiceSelector();
-  const cssFile = existsSync(path.join(LAWBUDDY_WEB_DIR, 'advocatevox.css'))
-    ? path.join(LAWBUDDY_WEB_DIR, 'advocatevox.css')
-    : path.join(LAWBUDDY_WEB_DIR, 'lawbuddy.css');
+  const cssFile = existsSync(path.join(ADVOCATEVOX_WEB_DIR, 'advocatevox.css'))
+    ? path.join(ADVOCATEVOX_WEB_DIR, 'advocatevox.css')
+    : path.join(ADVOCATEVOX_WEB_DIR, 'lawbuddy.css');
 
   const files = {
-    '/advocatevox': [path.join(LAWBUDDY_WEB_DIR, 'index.html'), 'text/html; charset=utf-8'],
-    '/advocatevox/': [path.join(LAWBUDDY_WEB_DIR, 'index.html'), 'text/html; charset=utf-8'],
-    '/advocatevox/teach': [path.join(LAWBUDDY_WEB_DIR, 'teach.html'), 'text/html; charset=utf-8'],
-    '/advocatevox/check': [path.join(LAWBUDDY_WEB_DIR, 'check.html'), 'text/html; charset=utf-8'],
-    '/advocatevox/practice': [path.join(LAWBUDDY_WEB_DIR, 'practice.html'), 'text/html; charset=utf-8'],
-    '/advocatevox/reports': [path.join(LAWBUDDY_WEB_DIR, 'reports.html'), 'text/html; charset=utf-8'],
-    '/advocatevox/assets/reports.js': [path.join(LAWBUDDY_WEB_DIR, 'reports.js'), 'text/javascript; charset=utf-8'],
-    '/advocatevox/assets/reportDocx.js': [path.join(LAWBUDDY_WEB_DIR, 'reportDocx.js'), 'text/javascript; charset=utf-8'],
-    '/advocatevox/assets/practice.js': [path.join(LAWBUDDY_WEB_DIR, 'practice.js'), 'text/javascript; charset=utf-8'],
-    '/advocatevox/assets/practiceModel.js': [path.join(LAWBUDDY_WEB_DIR, 'practiceModel.js'), 'text/javascript; charset=utf-8'],
-    '/advocatevox/assets/practiceDocx.js': [path.join(LAWBUDDY_WEB_DIR, 'practiceDocx.js'), 'text/javascript; charset=utf-8'],
-    '/advocatevox/assets/practiceStore.js': [path.join(LAWBUDDY_WEB_DIR, 'practiceStore.js'), 'text/javascript; charset=utf-8'],
-    '/advocatevox/assets/check.js': [path.join(LAWBUDDY_WEB_DIR, 'check.js'), 'text/javascript; charset=utf-8'],
-    '/advocatevox/assets/cases.js': [path.join(LAWBUDDY_WEB_DIR, 'cases.js'), 'text/javascript; charset=utf-8'],
+    '/advocatevox': [path.join(ADVOCATEVOX_WEB_DIR, 'index.html'), 'text/html; charset=utf-8'],
+    '/advocatevox/': [path.join(ADVOCATEVOX_WEB_DIR, 'index.html'), 'text/html; charset=utf-8'],
+    '/advocatevox/teach': [path.join(ADVOCATEVOX_WEB_DIR, 'teach.html'), 'text/html; charset=utf-8'],
+    '/advocatevox/check': [path.join(ADVOCATEVOX_WEB_DIR, 'check.html'), 'text/html; charset=utf-8'],
+    '/advocatevox/practice': [path.join(ADVOCATEVOX_WEB_DIR, 'practice.html'), 'text/html; charset=utf-8'],
+    '/advocatevox/reports': [path.join(ADVOCATEVOX_WEB_DIR, 'reports.html'), 'text/html; charset=utf-8'],
+    '/advocatevox/assets/reports.js': [path.join(ADVOCATEVOX_WEB_DIR, 'reports.js'), 'text/javascript; charset=utf-8'],
+    '/advocatevox/assets/reportDocx.js': [path.join(ADVOCATEVOX_WEB_DIR, 'reportDocx.js'), 'text/javascript; charset=utf-8'],
+    '/advocatevox/assets/practice.js': [path.join(ADVOCATEVOX_WEB_DIR, 'practice.js'), 'text/javascript; charset=utf-8'],
+    '/advocatevox/assets/practiceModel.js': [path.join(ADVOCATEVOX_WEB_DIR, 'practiceModel.js'), 'text/javascript; charset=utf-8'],
+    '/advocatevox/assets/practiceDocx.js': [path.join(ADVOCATEVOX_WEB_DIR, 'practiceDocx.js'), 'text/javascript; charset=utf-8'],
+    '/advocatevox/assets/practiceStore.js': [path.join(ADVOCATEVOX_WEB_DIR, 'practiceStore.js'), 'text/javascript; charset=utf-8'],
+    '/advocatevox/assets/check.js': [path.join(ADVOCATEVOX_WEB_DIR, 'check.js'), 'text/javascript; charset=utf-8'],
+    '/advocatevox/assets/cases.js': [path.join(ADVOCATEVOX_WEB_DIR, 'cases.js'), 'text/javascript; charset=utf-8'],
     '/advocatevox/assets/advocatevox.css': [cssFile, 'text/css; charset=utf-8'],
     '/advocatevox/assets/lawbuddy.css': [cssFile, 'text/css; charset=utf-8'],
-    '/advocatevox/assets/home.js': [path.join(LAWBUDDY_WEB_DIR, 'home.js'), 'text/javascript; charset=utf-8'],
-    '/advocatevox/assets/teach.js': [path.join(LAWBUDDY_WEB_DIR, 'teach.js'), 'text/javascript; charset=utf-8'],
-    '/advocatevox/assets/common.js': [path.join(LAWBUDDY_WEB_DIR, 'common.js'), 'text/javascript; charset=utf-8'],
+    '/advocatevox/assets/home.js': [path.join(ADVOCATEVOX_WEB_DIR, 'home.js'), 'text/javascript; charset=utf-8'],
+    '/advocatevox/assets/teach.js': [path.join(ADVOCATEVOX_WEB_DIR, 'teach.js'), 'text/javascript; charset=utf-8'],
+    '/advocatevox/assets/common.js': [path.join(ADVOCATEVOX_WEB_DIR, 'common.js'), 'text/javascript; charset=utf-8'],
     '/advocatevox/assets/voiceSelector.js': [voiceSelectorPath, 'text/javascript; charset=utf-8'],
   };
 
@@ -144,11 +146,10 @@ export const getLawBuddyFiles = () => {
 
   return Object.freeze(files);
 };
+export const getLawBuddyFiles = getAdvocateVoxFiles;
 
-export const LAWBUDDY_FILES = getLawBuddyFiles();
-export const ADVOCATEVOX_FILES = LAWBUDDY_FILES;
-export const getAdvocateVoxFiles = getLawBuddyFiles;
-export const ADVOCATEVOX_SECURITY_HEADERS = LAWBUDDY_SECURITY_HEADERS;
+export const ADVOCATEVOX_FILES = getAdvocateVoxFiles();
+export const LAWBUDDY_FILES = ADVOCATEVOX_FILES;
 
 export const isAdvocateVoxRoute = (pathname) => {
   return (
@@ -161,12 +162,12 @@ export const isAdvocateVoxRoute = (pathname) => {
 
 export const isLawBuddyRoute = isAdvocateVoxRoute;
 
-export const handleLawBuddyStaticRoute = (req, res, pathname, files = LAWBUDDY_FILES) => {
+export const handleAdvocateVoxStaticRoute = (req, res, pathname, files = ADVOCATEVOX_FILES) => {
   if ((req.method === 'GET' || req.method === 'HEAD') && files[pathname]) {
     const [filePath, contentType] = files[pathname];
     try {
       const body = readFileSync(filePath);
-      res.writeHead(200, { 'Content-Type': contentType, ...LAWBUDDY_SECURITY_HEADERS });
+      res.writeHead(200, { 'Content-Type': contentType, ...ADVOCATEVOX_SECURITY_HEADERS });
       res.end(req.method === 'HEAD' ? undefined : body);
       return true;
     } catch {
@@ -178,9 +179,9 @@ export const handleLawBuddyStaticRoute = (req, res, pathname, files = LAWBUDDY_F
   return false;
 };
 
-export const handleAdvocateVoxStaticRoute = handleLawBuddyStaticRoute;
+export const handleLawBuddyStaticRoute = handleAdvocateVoxStaticRoute;
 
-export const handleLawBuddyApiRoute = async (req, res, {
+export const handleAdvocateVoxApiRoute = async (req, res, {
   pathname,
   parsedUrl,
   legalLibrary,
@@ -341,4 +342,4 @@ export const handleLawBuddyApiRoute = async (req, res, {
   return true;
 };
 
-export const handleAdvocateVoxApiRoute = handleLawBuddyApiRoute;
+export const handleLawBuddyApiRoute = handleAdvocateVoxApiRoute;

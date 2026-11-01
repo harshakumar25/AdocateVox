@@ -1,5 +1,5 @@
-/** Browser-only matter storage. Saving is explicit; no client facts are sent to LawBuddy APIs. */
-const DB_NAME = 'lawbuddy-practice';
+/** Browser-only matter storage. Saving is explicit; no client facts are sent to AdvocateVox APIs. */
+const DB_NAME = 'advocatevox-practice';
 const STORE = 'matters';
 const VERSION = 1;
 

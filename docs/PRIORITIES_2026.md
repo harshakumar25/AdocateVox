@@ -1,4 +1,4 @@
-# LawBuddy priorities for 2026
+# AdvocateVox priorities for 2026
 
 **Decision, 15 October 2026:** Make **Bare Act Check** the first reliable product. The next workflow is an advocate's audit of statutory references in a draft. Matter and filing tools should build on that verified statute layer. This complements the existing voice tutor and case-law work in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md); it does not replace them.
 
@@ -22,7 +22,7 @@ An Act-level commencement flag cannot safely answer a provision-level question. 
 
 ### P0 publishing rule
 
-Use a reviewable pipeline: **discover official document → archive bytes and provenance → extract with page anchors → parse proposed legal events → cross-check consolidated text and gazette → human review of uncertain events → publish a dated snapshot → run regression fixtures**. Store both *legal effective time* and *when LawBuddy learned/verified the source*. A corrected source must create a new snapshot and audit entry; it must not silently rewrite an earlier answer. Search and AI may help locate a provision, but the result status comes from the verified event ledger and extracted source spans. “Verified text” means the cited wording was checked against a source; it is not an automatic opinion on applicability to a client's facts.
+Use a reviewable pipeline: **discover official document → archive bytes and provenance → extract with page anchors → parse proposed legal events → cross-check consolidated text and gazette → human review of uncertain events → publish a dated snapshot → run regression fixtures**. Store both *legal effective time* and *when AdvocateVox learned/verified the source*. A corrected source must create a new snapshot and audit entry; it must not silently rewrite an earlier answer. Search and AI may help locate a provision, but the result status comes from the verified event ledger and extracted source spans. “Verified text” means the cited wording was checked against a source; it is not an automatic opinion on applicability to a client's facts.
 
 ### Which users first
 
@@ -32,11 +32,11 @@ The primary paid or professional pilot should be **advocates handling statutory 
 
 Pakistan and Bangladesh retain some common statutory lineage with India, including official versions of the [Pakistan Penal Code, 1860](https://pakistancode.gov.pk/pdffiles/administratoracbdabf2b79c8956d6ea4804fcceb92d.pdf) and [Bangladesh Penal Code, 1860](https://bdlaws.minlaw.gov.bd/act-print-11/section-print-2189.html). Their products are useful workflow references; their legal content cannot be transplanted to India.
 
-| Product's own description | Useful product lesson for LawBuddy |
+| Product's own description | Useful product lesson for AdvocateVox |
 | --- | --- |
 | Pakistan's [Legalise](https://legalise.pk/about/) advertises controlled-corpus drafting, federal/provincial statutes, case search, a stamp-duty calculator and jurisdiction tools. | Keep drafting tied to identifiable sources and local jurisdiction. |
 | [Pak Legal Database](https://www.paklegaldatabase.com/about-us/) advertises page-linked source PDFs, court notices/cause lists, a case diary, multilingual research and WhatsApp citation retrieval. | Reduce steps from a question or citation to the underlying document; connect research to a matter. |
 | Nigeria's [LawPavilion](https://www.lawpavilion.com/cms) advertises matter management, conflict checks, permissions, private firm knowledge, client portal and billing; its [homepage](https://www.lawpavilion.com/) advertises offline legal research. | A full chamber suite is possible, but it is much broader than the first wedge. Offline access may matter for students and court visits after the source ledger is reliable. |
 | Bangladesh's [Digital BLD](https://www.bldlegalized.com/) describes searchable, portable digital law reporting for its legal community. | Institutional provenance and easy access can be as important as generative answers. |
 
-These are **vendor or platform claims about features**, not independent evidence of accuracy, adoption, security or legal authority. Test workflows with Indian advocates before copying them. A generic AI research chat or case tracker is also crowded in India: [Manupatra already advertises Central/State Bare Acts, court rules, forms and AI summaries](https://www.manupatrafast.com/defaults/plan/Core%20Plan.pdf?1=), while eCourts supplies the free case utilities above. LawBuddy's measurable wedge is a dated, jurisdiction-aware check with primary-source proof and an honest unresolved state.
+These are **vendor or platform claims about features**, not independent evidence of accuracy, adoption, security or legal authority. Test workflows with Indian advocates before copying them. A generic AI research chat or case tracker is also crowded in India: [Manupatra already advertises Central/State Bare Acts, court rules, forms and AI summaries](https://www.manupatrafast.com/defaults/plan/Core%20Plan.pdf?1=), while eCourts supplies the free case utilities above. AdvocateVox's measurable wedge is a dated, jurisdiction-aware check with primary-source proof and an honest unresolved state.

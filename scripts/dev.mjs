@@ -35,6 +35,7 @@ const link = (target, at) => {
 };
 link(path.join(docvex, 'server'), path.join(dev, 'server'));
 link(root, path.join(dev, 'node_modules', '@docvex', 'lawbuddy'));
+link(root, path.join(dev, 'node_modules', '@docvex', 'advocatevox'));
 
 // DocVex reads its .env (GROQ_API_KEY, providers) from its own folder: run from there.
 const child = spawn(process.execPath, [

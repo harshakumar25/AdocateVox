@@ -12,7 +12,7 @@ const patternToRegex = (pattern) => {
 
 /**
  * @param {string} text robots.txt body
- * @param {string} productToken our crawler's product token, e.g. "LawBuddyBot"
+ * @param {string} productToken our crawler's product token, e.g. "AdvocateVoxBot"
  * @returns {{ isAllowed: (pathAndQuery: string) => boolean, crawlDelayMs: number|null }}
  */
 export const parseRobots = (text, productToken) => {

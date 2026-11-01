@@ -284,12 +284,12 @@ AdvocateVox exports clean primitives for consumption via `@docvex/lawbuddy`:
 
 ```javascript
 import {
-  handleLawBuddyStaticRoute,
-  handleLawBuddyApiRoute,
+  handleAdvocateVoxStaticRoute,
+  handleAdvocateVoxApiRoute,
   createLawRetriever,
   createLegalStoreLoader,
-  LAWBUDDY_FILES,
-  LAWBUDDY_SECURITY_HEADERS
+  ADVOCATEVOX_FILES,
+  ADVOCATEVOX_SECURITY_HEADERS
 } from '@docvex/lawbuddy';
 ```
 

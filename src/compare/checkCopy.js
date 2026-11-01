@@ -111,7 +111,7 @@ const pageTexts = async (file) => {
 };
 
 /**
- * An uploaded PDF of any kind: identified first (a copy of an Act LawBuddy holds, a copy of a repealed
+ * An uploaded PDF of any kind: identified first (a copy of an Act AdvocateVox holds, a copy of a repealed
  * code, or a write-up), then checked the way that kind of document must be (see documentCheck.js).
  * The file is read in a private temporary folder and deleted; only its sha256 is kept with the report.
  */
@@ -119,7 +119,7 @@ export const checkUploadedDocument = async ({
   store, body, copyDate = null, readPages = pageTexts, critique, cloudClaims = false, tmpRoot = os.tmpdir(),
 }) => {
   const sha256 = crypto.createHash('sha256').update(body).digest('hex');
-  const dir = await fs.mkdtemp(path.join(tmpRoot, 'lawbuddy-upload-'));
+  const dir = await fs.mkdtemp(path.join(tmpRoot, 'advocatevox-upload-'));
   let pages;
   try {
     const file = path.join(dir, 'document.pdf');
@@ -129,7 +129,7 @@ export const checkUploadedDocument = async ({
     await fs.rm(dir, { recursive: true, force: true });
   }
   if (!pages.join('').trim()) {
-    return { ok: false, status: 422, error: 'This PDF has no text layer (it is a scan or images), so there is nothing LawBuddy can read in it.' };
+    return { ok: false, status: 422, error: 'This PDF has no text layer (it is a scan or images), so there is nothing AdvocateVox can read in it.' };
   }
   const report = await checkDocument({ store, pages, copyDate, sha256,
     ...(cloudClaims ? (critique ? { critique } : {}) : { critique: async () => null }),
@@ -162,7 +162,7 @@ export const checkUploadedCopy = async ({
   // The stored report is undated; a copy date only decides which provisions are newer than the copy.
   let base = stored?.report;
   if (!base) {
-    const dir = await fs.mkdtemp(path.join(tmpRoot, 'lawbuddy-upload-'));
+    const dir = await fs.mkdtemp(path.join(tmpRoot, 'advocatevox-upload-'));
     let pages;
     try {
       const file = path.join(dir, 'copy.pdf');

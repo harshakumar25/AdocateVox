@@ -1,6 +1,6 @@
-# LawBuddy × DocVex — Research-Backed Implementation Plan
+# AdvocateVox × DocVex — Research-Backed Implementation Plan
 
-> **One line:** LawBuddy is a voice-first legal tutor that teaches Indian case law, statutes and amendments **only from primary sources it has fetched and checked itself**. It cites every claim down to the paragraph and says "I couldn't verify that" rather than guessing.
+> **One line:** AdvocateVox is a voice-first legal tutor that teaches Indian case law, statutes and amendments **only from primary sources it has fetched and checked itself**. It cites every claim down to the paragraph and says "I couldn't verify that" rather than guessing.
 
 Status: Draft v1.7 (case-law layer live: 38,371 Supreme Court judgments indexed, precedent points with cited-by counts, overruled status from the reporter's own treatment labels, quote-verified and opinion-attributed briefs, verified-only reviews) · 2026-10-14 · Owner: @harshakumar25
 Builds on: DocVex runtime (`server/`, `extension/`, `demo.html`)
@@ -11,7 +11,7 @@ Builds on: DocVex runtime (`server/`, `extension/`, `demo.html`)
 
 | | Decision |
 |---|---|
-| **Product** | **LawBuddy website** (hosted), with DocVex as its voice/teaching engine |
+| **Product** | **AdvocateVox website** (hosted), with DocVex as its voice/teaching engine |
 | **Who first** | **Judiciary aspirants (PCS-J) and LLB students**, mostly students. **Lawyers use it for revision.** Each case is offered as a **short summary** or a **full case study**. Citizens' "Know Your Rights" comes in Phase 5. |
 | **Models** | **Groq** for runtime teaching and voice (fast first sentence). **Claude** for ingest-time Case Record extraction and verification. The model adapter is provider-neutral, so OpenAI (Codex/GPT) can be plugged in later. |
 | **First niche** | **Indian Constitution**: a bounded official text, a limited set of landmark Supreme Court cases, heavy weight in judiciary and LLB papers, and the Supreme Court is its final interpreter. |
@@ -28,7 +28,7 @@ Builds on: DocVex runtime (`server/`, `extension/`, `demo.html`)
 
 You listed 9 problems. They reduce to **four root causes**:
 
-| # | Your problem | Root cause | LawBuddy fix (section) |
+| # | Your problem | Root cause | AdvocateVox fix (section) |
 |---|---|---|---|
 | 1 | Unfair or inaccurate answers, hallucinations | Model answers from memory, not from the source | Cite-or-Silence pipeline (§6) |
 | 2 | Facts unclear because GPT can't fetch the case | No access to the judgment text | Own corpus + direct connectors (§4, §5) |
@@ -55,7 +55,7 @@ You listed 9 problems. They reduce to **four root causes**:
 
 ## 2. Competitive landscape: what's broken in existing products
 
-| Product | Strength | Gap LawBuddy exploits |
+| Product | Strength | Gap AdvocateVox exploits |
 |---|---|---|
 | **Indian Kanoon** | Free, huge coverage, has an API | No automated *overruled/good-law* flag (you audit "Cited by" manually); texts not always authenticated; search-first, not teaching-first. [Jurigram](https://jurigram.com/advocates/resources/legal-research/how-to-find-overruled-judgments-on-indian-kanoon) |
 | **SCC Online / Manupatra** | Citators with overruled flags, editorial headnotes | Expensive. Built for practitioners, not learners. Headnotes are copyrighted editorial work, so we cannot reuse them. |
@@ -76,7 +76,7 @@ You listed 9 problems. They reduce to **four root causes**:
 | **Copyright in judgments** | Copyright Act 1957 **s.52(1)(q)**: reproducing judgments/orders is not infringement. *Eastern Book Co. v. D.B. Modak* (2008) 1 SCC 1: raw judgment text is free to reproduce, but a publisher's **original editorial inputs (headnotes etc.) can be protected**. [Law and Other Things](https://lawandotherthings.com/are-indian-court-judgments/) | Ingest from official sources and AWS Open Data. **Never** copy SCC/Manupatra headnotes or paragraph formatting. Generate our own summaries. Store "reporter citations" (e.g., "(2017) 10 SCC 1") as *identifiers only*. |
 | **News sites** | Articles are copyrighted | Store only title + URL + date as an *alert*. Fetch the primary judgment and teach from that. |
 | **Site terms & CAPTCHAs** | eCourts portals use CAPTCHAs and have no official bulk API. [Search notes](https://pypi.org/project/bharat-courts/0.3.1/) | **Do not automate CAPTCHAs or bulk-scrape portals.** Use the AWS Open Data mirrors for bulk and official RSS/listing pages politely (robots.txt, ≤1 request every few seconds, conditional GET). Indian Kanoon's API is **not** used (decision 2026-10-12). |
-| **Unauthorised practice / BCI** | Advocates Act 1961 + BCI Rule 36 restrict practice and solicitation. BCI has acted against platforms listing lawyers. [Medianama](https://www.medianama.com/2025/03/223-the-bar-council-of-india-warns-against-legal-advertising-online/) | LawBuddy provides **legal information and education, not legal advice**. No lawyer marketplace or ads. Citizen mode always ends with the free legal aid route (NALSA / State LSA / Tele-Law). Get a written opinion from counsel before the citizen launch. |
+| **Unauthorised practice / BCI** | Advocates Act 1961 + BCI Rule 36 restrict practice and solicitation. BCI has acted against platforms listing lawyers. [Medianama](https://www.medianama.com/2025/03/223-the-bar-council-of-india-warns-against-legal-advertising-online/) | AdvocateVox provides **legal information and education, not legal advice**. No lawyer marketplace or ads. Citizen mode always ends with the free legal aid route (NALSA / State LSA / Tele-Law). Get a written opinion from counsel before the citizen launch. |
 | **Data protection** | DPDP Rules notified 13–14 Nov 2025. Consent managers ~Nov 2026. Core consent, notice, security and **children's data** duties apply from ~May 2027. [Mondaq](https://www.mondaq.com/india/data-protection/1708164/digital-personal-data-protection-rules-2025-notified) | CLAT UG aspirants can be <18, so build verifiable parental consent before onboarding minors. Keep the local-first default (DocVex already does). Minimise data. Plan a 72-hour breach report process. |
 | **Victim identity** | Courts and statute bar disclosing identities of sexual-offence victims (BNS s.72 / former IPC s.228A) | A redaction pass at ingest: never voice or display a victim name. Respect court-ordered anonymisation and right-to-be-forgotten takedowns. |
 | **Dataset licences** | AWS Open Data SC/HC judgments are **CC-BY-4.0** | Attribution line in the app's footer and About page. |
@@ -111,7 +111,7 @@ You listed 9 problems. They reduce to **four root causes**:
 | **LiveLaw, Bar & Bench, SC Observer** | "Something important happened" | RSS/headlines → **alert only** → resolve to a primary judgment | Hourly | 2 |
 | **yourlordships.in/bare-acts** (judiciary coaching site) | 19 bare-act PDFs a coaching institute treats as core for judiciary prep (list in §11d) | **Watched automatically** (robots allows all; strong ETag/Last-Modified on every PDF, so revalidation is a bodiless 304) → **signal + curriculum only** | Listing 12 h–7 d, PDFs 1–30 d (adaptive) | 2 |
 
-**Observed access for our declared bot (`LawBuddyBot/0.1`), tested 2026-10-12 from an Indian IP:**
+**Observed access for our declared bot (`AdvocateVoxBot/0.1`), tested 2026-10-12 from an Indian IP:**
 
 | Source | Result | Route |
 |---|---|---|
@@ -119,7 +119,7 @@ You listed 9 problems. They reduce to **four root causes**:
 | SEBI RSS (`sebirss.xml`) | ✅ 200, then 304 on revalidation | Automatic |
 | sci.gov.in, indiacode.nic.in, legislative.gov.in | ❌ 403 from the Akamai firewall for our bot user-agent (a generic curl user-agent gets 200) | **Manual import** (`npm run legal -- import <file> <url>`) + ask NIC / the Legislative Department for whitelisting or official bulk access |
 | lddashboard.legislative.gov.in | ❌ connection timeout | Manual import |
-| egazette.gov.in | ✅ GET 200 for our bot; no robots.txt (404 = no restrictions). Two traps: **every HEAD request returns 404** (server quirk, so probe with GET), and the server sends an **incomplete TLS chain** (leaf only, issued by Let's Encrypt YR2 → ISRG Root YR, cross-signed by ISRG Root X1). Node fails where curl succeeds; LawBuddy now completes the chain the way browsers do (§5.5.7) | Automatic, tier 0. BNS (CG-DL-E-25122023-250883), BNSS (…250884), BSA (…250882) Gazette PDFs fetched 2026-10-12 |
+| egazette.gov.in | ✅ GET 200 for our bot; no robots.txt (404 = no restrictions). Two traps: **every HEAD request returns 404** (server quirk, so probe with GET), and the server sends an **incomplete TLS chain** (leaf only, issued by Let's Encrypt YR2 → ISRG Root YR, cross-signed by ISRG Root X1). Node fails where curl succeeds; AdvocateVox now completes the chain the way browsers do (§5.5.7) | Automatic, tier 0. BNS (CG-DL-E-25122023-250883), BNSS (…250884), BSA (…250882) Gazette PDFs fetched 2026-10-12 |
 | yourlordships.in | ✅ 200; robots.txt `Disallow:` (allow all); listing page byte-stable; all 19 PDFs carry `ETag` + `Last-Modified` (every one **28 Dec 2023**), 15.8 MB total | Automatic, via the watch pipeline (§5.5); tier 2 |
 
 **Policy:** we never disguise the user-agent or otherwise get around a bot block. Blocked sources are handled by a person downloading in a browser (recorded as `method = 'manual'` with the original URL and sha256) until the publisher grants access.
@@ -130,11 +130,11 @@ You listed 9 problems. They reduce to **four root causes**:
 
 ## 5. Architecture
 
-### 5.1 Where LawBuddy plugs into DocVex
+### 5.1 Where AdvocateVox plugs into DocVex
 
 ```mermaid
 flowchart TD
-  subgraph Ingest["LawBuddy Ingestion (scheduled workers)"]
+  subgraph Ingest["AdvocateVox Ingestion (scheduled workers)"]
     C1[Connectors: AWS SC/HC · sci.gov.in · HC sites · India Code · Gazette · SEBI RSS · MCA · NCLAT]
     C1 --> R[Raw Vault: immutable PDFs/HTML, sha256, fetch log]
     R --> X[Extract: PDF→text with page + para numbers; OCR fallback incl. Hindi]
@@ -224,13 +224,13 @@ Law changes over time. Every provision has **versions with `valid_from`/`valid_t
 
 ### 5.5 Change-watch pipeline: fetch whenever a source updates (problem #7)
 
-**Goal.** Every new, updated or withdrawn legal document should reach LawBuddy within its source's cadence. Checking must be nearly free when nothing changed, nothing may be missed, and every byte must keep its provenance. A changed PDF must never silently change what LawBuddy teaches without passing the same verification as the first ingest.
+**Goal.** Every new, updated or withdrawn legal document should reach AdvocateVox within its source's cadence. Checking must be nearly free when nothing changed, nothing may be missed, and every byte must keep its provenance. A changed PDF must never silently change what AdvocateVox teaches without passing the same verification as the first ingest.
 
 #### 5.5.1 Where changes first appear (watch these first)
 
 Law changes in a fixed order. The pipeline watches the earliest official signal, not the last copy to be updated:
 
-| Order | Where the change appears | Lag behind the law | LawBuddy role |
+| Order | Where the change appears | Lag behind the law | AdvocateVox role |
 |---|---|---|---|
 | 1 | **e-Gazette**: amendment Act, commencement notification, ordinance, rules | 0 (this *is* the law) | Tier 0 trigger: creates `provision_version` rows with `valid_from` |
 | 2 | **legislative.gov.in**: updated Constitution editions, amendment Acts | Days to months | Tier 0 consolidated text (manual import while our bot is blocked) |
@@ -312,11 +312,11 @@ Rules:
 
 #### 5.5.6 Staleness detector: "Is my bare act current?"
 
-Students prepare from PDFs like these 2023 uploads. The detector compares a mirror copy with the official version LawBuddy holds:
+Students prepare from PDFs like these 2023 uploads. The detector compares a mirror copy with the official version AdvocateVox holds:
 
-1. **Date check**: a mirror copy's `Last-Modified` is compared with the `valid_from` of the latest provision version of the same Act. Example: yourlordships' Constitution PDF (655 KB, 28 Dec 2023) predates the official 2026 English edition LawBuddy ingested (2.56 MB, 510 provisions). Every provision amended or brought into force since then, such as the 106th Amendment provisions in force from 16 Apr 2026 (Arts. 330A, 332A, 334A), is missing or out of date in that copy.
+1. **Date check**: a mirror copy's `Last-Modified` is compared with the `valid_from` of the latest provision version of the same Act. Example: yourlordships' Constitution PDF (655 KB, 28 Dec 2023) predates the official 2026 English edition AdvocateVox ingested (2.56 MB, 510 provisions). Every provision amended or brought into force since then, such as the 106th Amendment provisions in force from 16 Apr 2026 (Arts. 330A, 332A, 334A), is missing or out of date in that copy.
 2. **Text check** (after extraction): a provision-by-provision comparison lists exactly which sections differ.
-3. **Product surface**: "Check my bare act". A student uploads or links a PDF, and LawBuddy answers *"This copy is current to 28 Dec 2023. Since then, these N provisions changed: …"*, with each change linked to its Gazette notification. This turns problem #7 into a feature that none of the products reviewed in §2 offers.
+3. **Product surface**: "Check my bare act". A student uploads or links a PDF, and AdvocateVox answers *"This copy is current to 28 Dec 2023. Since then, these N provisions changed: …"*, with each change linked to its Gazette notification. This turns problem #7 into a feature that none of the products reviewed in §2 offers.
 
 **Built (2026-10-12)** as `compare/copyCheck.js` (algorithm) + `compare/checkCopy.js` (service), CLI `npm run legal -- check-copy <url> [date]`, `GET /lawbuddy/api/copy-check?url=`, migration 8 `copy_check`, and wired into the watch pipeline: a watchlist's `acts` map (`constitution-of-india.pdf → constitution`) makes every new or changed mirror copy get checked automatically, with the verdict recorded on its change event.
 
@@ -334,7 +334,7 @@ Students prepare from PDFs like these 2023 uploads. The detector compares a mirr
 
 #### 5.5.7 Two robustness pieces for Indian government sources
 
-**Incomplete TLS chains** (`sources/tlsChain.js`). Many `.gov.in` servers send only their own certificate. On exactly the failures `UNABLE_TO_VERIFY_LEAF_SIGNATURE` / `UNABLE_TO_GET_ISSUER_CERT(_LOCALLY)`, LawBuddy does the following once per host:
+**Incomplete TLS chains** (`sources/tlsChain.js`). Many `.gov.in` servers send only their own certificate. On exactly the failures `UNABLE_TO_VERIFY_LEAF_SIGNATURE` / `UNABLE_TO_GET_ISSUER_CERT(_LOCALLY)`, AdvocateVox does the following once per host:
 1. Reads the presented certificates (handshake only, nothing sent).
 2. Requires the leaf to match the hostname and be in date.
 3. Follows each certificate's "CA Issuers" (AIA) URL, verifying every signature up to a root **Node already ships with**.
@@ -380,7 +380,7 @@ For each claim:
 - Any case mentioned must exist in `case` (this kills fake citations).
 - Provisions must match the version valid on the relevant date.
 
-Outcome → `groundingStatus` is extended from DocVex's current `grounded | ungrounded` to **`verified | partially_verified | ungrounded | refused`**. Unsupported claims are **dropped before speech**. If nothing survives, LawBuddy says: *"I couldn't verify that from the judgment. Here's what the judgment does say…"*
+Outcome → `groundingStatus` is extended from DocVex's current `grounded | ungrounded` to **`verified | partially_verified | ungrounded | refused`**. Unsupported claims are **dropped before speech**. If nothing survives, AdvocateVox says: *"I couldn't verify that from the judgment. Here's what the judgment does say…"*
 
 ### 6.6 Speak and show
 - **Voice:** a LAW MODE prompt in `teacherPrompt.js` (the current prompt bans "citation brackets", so law mode replaces that with *spoken citations*).
@@ -503,7 +503,7 @@ Pipeline: the official judgment PDF (stored copy used if a refetch fails) → pa
 5. **Reviewer programme** (§7A.7).
 
 ### 7A.7 Reviews: real, verified, never fabricated
-**LawBuddy will not show invented reviews or reviews attributed to lawyers who did not write them.** Fabricated testimonials are deceptive under the Consumer Protection Act 2019 and against IS 19000:2022, and impersonating advocates breaches BCI norms. It would also destroy the one thing LawBuddy sells: trust.
+**AdvocateVox will not show invented reviews or reviews attributed to lawyers who did not write them.** Fabricated testimonials are deceptive under the Consumer Protection Act 2019 and against IS 19000:2022, and impersonating advocates breaches BCI norms. It would also destroy the one thing AdvocateVox sells: trust.
 
 **Built:**
 - `case_review` (reviewer name, credential, rating, comment, source URL, `verified_by`, `verified_at`).
@@ -604,7 +604,7 @@ Rules: legal information only, Hindi-first voice, every right cited to a provisi
 
 ---
 
-## 10. Evaluation: LawBuddy-Eval (built before the MVP ships)
+## 10. Evaluation: AdvocateVox-Eval (built before the MVP ships)
 
 | Suite | Size (v1) | Metric | Release gate |
 |---|---|---|---|
@@ -634,13 +634,13 @@ Following the DocVex rule: **one feature at a time: Plan → Implement → Run �
 - Ingest the **Constitution of India** (legislative.gov.in COI) into `act`/`provision`/`provision_version`.
 - **Exit:** 395+ articles and schedules searchable; parser ≥99% on 300 test strings.
 
-### Phase 1: MVP "Constitution LawBuddy" website (Weeks 3–8)
+### Phase 1: MVP "Constitution AdvocateVox" website (Weeks 3–8)
 - AWS SC connector → backfill metadata for all; full text + Case Records for **~300 curated Constitution landmarks + all SC judgments since 2023**.
 - `workers/pdf_extract.py` (page- and paragraph-preserving).
 - `enrich/caseRecord.js` on **Claude** (offline batch, structured output: every item carries exact quoted text + para ids) + `ingestVerifier.js`; human review queue for the 300 landmarks.
 - `legalRetriever.js`, a `legal` path in `decideRetrievalPath`, `answerVerifier.js`, the extended `groundingStatus`.
 - LAW MODE prompt on **Groq** + legal speech normalisation.
-- **LawBuddy website** (hosted):
+- **AdvocateVox website** (hosted):
   - each case offered two ways: **Summary** (5-minute listen/read) and **Full Case Study** (FIRAC + role-coloured judgment + evidence panel);
   - Citation Drill;
   - Basic Structure + Art. 21 roadmaps;
@@ -668,7 +668,7 @@ Following the DocVex rule: **one feature at a time: Plan → Implement → Run �
 - 10 situation playbooks, Hindi-first, legal-aid routing, counsel sign-off, DPDP consent flows.
 
 ### Phase 6: Scale
-- Postgres + pgvector, cloud ingestion workers, a public read-only "LawBuddy Index" API, mobile app, law-college institutional plans; more niches (consumer, labour codes, IT Act/DPDP, family, tort).
+- Postgres + pgvector, cloud ingestion workers, a public read-only "AdvocateVox Index" API, mobile app, law-college institutional plans; more niches (consumer, labour codes, IT Act/DPDP, family, tort).
 
 ---
 
@@ -686,7 +686,7 @@ Following the DocVex rule: **one feature at a time: Plan → Implement → Run �
 
 ## 11b. Constitution ingest findings (2026 English edition, 2026-10-12)
 
-- **The official consolidated text prints amendments the Supreme Court struck down** and says so only in a footnote: the NJAC (99th Amendment) in Arts. 124, 124A, 127, 128, 217, 222, 224, 224A; Art. 368(4)–(5) (*Minerva Mills*); words in Art. 31C (*Kesavananda*); para 7 of the Tenth Schedule (*Kihoto Hollohan*). Parser flags these (`judicialNotes`), and the CLI/API returns a **caution** so LawBuddy never teaches them as plain good law.
+- **The official consolidated text prints amendments the Supreme Court struck down** and says so only in a footnote: the NJAC (99th Amendment) in Arts. 124, 124A, 127, 128, 217, 222, 224, 224A; Art. 368(4)–(5) (*Minerva Mills*); words in Art. 31C (*Kesavananda*); para 7 of the Tenth Schedule (*Kihoto Hollohan*). Parser flags these (`judicialNotes`), and the CLI/API returns a **caution** so AdvocateVox never teaches them as plain good law.
 - **Never-notified amendments** ("date (yet) to be notified") are kept as `pendingAmendments` and do not change the in-force date. Affects Arts. 22, 100, 102, 105, 168, 189, 191, 194 (mostly the 44th Amendment). This is classic exam material.
 - **The 106th Amendment (women's reservation)** is shown in force from **16 Apr 2026** (Arts. 330A, 332A, 334A).
 - **Quirks in the official PDF that the parser absorbs** (each one is a regression test): a footnote number without its full stop; Symbol-font asterisk footnotes (U+F02A); a footnote marker glued to an article number ("731D" means footnote 7 + Art. 31D); the "SECOND SCHEDULE" heading missing from the text layer (inferred from its basis line and reported); missing spaces ("Distributionof").
@@ -710,7 +710,7 @@ The copy checker, run on the official edition against itself, found that **6 of 
 
 **Measured (HEAD only, 2 s apart):** all 19 return 200 with `ETag` and `Last-Modified`, and **all are dated Thu, 28 Dec 2023**, so they were uploaded together and never updated. Total 15.8 MB, ranging from 22 KB (Muslim Marriages Registration Act, 1981) to 2.96 MB (CPC).
 
-**What LawBuddy takes from it, and what it doesn't:**
+**What AdvocateVox takes from it, and what it doesn't:**
 
 | Use | Decision | Why |
 |---|---|---|
@@ -749,7 +749,7 @@ The copy checker, run on the official edition against itself, found that **6 of 
 
 | # | Question | Decision (2026-10-12) |
 |---|---|---|
-| 1 | Hosting | **Hosted LawBuddy website.** DocVex modules (pipeline, sentence buffer, speech normalisation, providers) are reused server-side. |
+| 1 | Hosting | **Hosted AdvocateVox website.** DocVex modules (pipeline, sentence buffer, speech normalisation, providers) are reused server-side. |
 | 2 | Audience | **Judiciary aspirants + LLB students** (mostly students); **lawyers for revision**. Content as **summaries** or **full case studies**. |
 | 3 | Human reviewer | *Open.* Needed before the 300 landmark records can carry the "Verified" badge. |
 | 4 | Models | **Groq** at runtime; **Claude** at ingest; OpenAI (Codex/GPT) optional later through the same adapter. |
@@ -770,10 +770,10 @@ The copy checker, run on the official edition against itself, found that **6 of 
 | 7 | Official old↔new correspondence: `parse/html.js`, `parse/sankalanTable.js`, migration 3 `provision_mapping`, CLI `import-table` / `lookup`, NCRB registered (tier 0, manual-only) | ✅ Done, `server/test/legal_sankalan.test.js`; live NCRB auto-fetch correctly refused by robots.txt |
 | 8 | Import the three real Sankalan tables + BNS/BNSS/BSA Gazette PDFs | ◐ **Gazette PDFs ✅ fetched automatically from e-Gazette (tier 0)** via mirror provenance (§5.5.7). The Sankalan correspondence tables still need a manual download (NCRB disallows crawlers) |
 | 9 | BNS/BNSS/BSA section-text parser from the Gazette PDFs, `jurisdiction` on provision versions | ⏳ **Unblocked; next.** Layout note: Gazette Acts print margin notes (section headings, "45 of 1860." citations) beside the body, and the line extractor merges them into body lines ("358. (1) The Indian Penal Code is hereby repealed. 45 of 1860. savings."). The worker must emit word-level x positions so body and margin can be separated |
-| 5 | **LawBuddy has its own routes** (`/teach` is plain DocVex again): `POST /lawbuddy/teach` (same body and SSE stream as `/teach`, law mode: named provisions → BM25 search of the official text with a relative-score cutoff → "not in the library" with no answering from memory; follow-ups are grounded too), `GET /lawbuddy/health`, `/lawbuddy/article/:label?asOf=`, `/lawbuddy/search?q=`, `/lawbuddy/lookup?act=&section=`. Shared `legal/service.js` for the CLI and HTTP. Search: Porter stemming (migration 6), heading-weighted BM25, question words dropped | ✅ Done, `server/test/legal_retriever.test.js`. Live: "can the police detain me…" → Art. 22, "is untouchability allowed?" → Art. 17, "how is the President elected?" → Arts. 54/68/62. **Live Groq run on Art. 124A** stayed grounded and warned that the NJAC was struck down, **but said "Ninth" for "Ninety-ninth Amendment"**. That is the case for item 6b |
-| 5b | **LawBuddy website routes**: `GET /lawbuddy` (home: ask box that works without JS, live library card with source + fingerprint, "where the printed text can mislead you" topics, legal-aid footer) and `GET /lawbuddy/teach` (studio: streamed grounded answer, Chatterbox voice with browser-speech fallback, Stop, voice toggle, shareable `?q=`, and the **official text relied on** shown as statute cards with in-force date, struck-down and pending notices, and source). `POST /lawbuddy/teach` is the API at the same address; JSON moved to `/lawbuddy/api/{health,article/:label,search,lookup}`. Files in `web/lawbuddy/` are served from a whitelist with a strict CSP, no inline scripts and no innerHTML. Search hits must cover ≥50% of the question's meaningful words | ✅ Done, verified in the browser: Art. 124A shows the "Not good law as printed" card, Art. 999 shows "Not found in the official text", and a Kubernetes question shows "Not in the library" and the tutor declines |
+| 5 | **AdvocateVox has its own routes** (`/teach` is plain DocVex again): `POST /lawbuddy/teach` (same body and SSE stream as `/teach`, law mode: named provisions → BM25 search of the official text with a relative-score cutoff → "not in the library" with no answering from memory; follow-ups are grounded too), `GET /lawbuddy/health`, `/lawbuddy/article/:label?asOf=`, `/lawbuddy/search?q=`, `/lawbuddy/lookup?act=&section=`. Shared `legal/service.js` for the CLI and HTTP. Search: Porter stemming (migration 6), heading-weighted BM25, question words dropped | ✅ Done, `server/test/legal_retriever.test.js`. Live: "can the police detain me…" → Art. 22, "is untouchability allowed?" → Art. 17, "how is the President elected?" → Arts. 54/68/62. **Live Groq run on Art. 124A** stayed grounded and warned that the NJAC was struck down, **but said "Ninth" for "Ninety-ninth Amendment"**. That is the case for item 6b |
+| 5b | **AdvocateVox website routes**: `GET /lawbuddy` (home: ask box that works without JS, live library card with source + fingerprint, "where the printed text can mislead you" topics, legal-aid footer) and `GET /lawbuddy/teach` (studio: streamed grounded answer, Chatterbox voice with browser-speech fallback, Stop, voice toggle, shareable `?q=`, and the **official text relied on** shown as statute cards with in-force date, struck-down and pending notices, and source). `POST /lawbuddy/teach` is the API at the same address; JSON moved to `/lawbuddy/api/{health,article/:label,search,lookup}`. Files in `web/lawbuddy/` are served from a whitelist with a strict CSP, no inline scripts and no innerHTML. Search hits must cover ≥50% of the question's meaningful words | ✅ Done, verified in the browser: Art. 124A shows the "Not good law as printed" card, Art. 999 shows "Not found in the official text", and a Kubernetes question shows "Not in the library" and the tutor declines |
 | 6b | **Answer verifier** (§6.5): check every amendment name, article/section number and date in the model's answer against the evidence before it is spoken; drop or correct unsupported sentences | ⏳ **Next priority** (demonstrated need) |
-| 6 | LawBuddy-Eval skeleton with the fake-case-trap suite first | ⏳ Waits for the answer pipeline |
+| 6 | AdvocateVox-Eval skeleton with the fake-case-trap suite first | ⏳ Waits for the answer pipeline |
 | 10 | **Change-watch pipeline** (§5.5): migration 7 (`watch_target`, `change_event`); `watch/links.js` (tolerant link extraction), `watch/cadence.js` (adaptive interval + jitter), `watch/watchlists.js`, `watch/watcher.js` (listing link-set diff, conditional revalidation, discovered/changed/removed/restored/paused/gone events, leases, stale-claim guard), `watch/events.js` (tier-aware router; pending until an ingestor exists), `watch/scheduler.js` (daemon loop); CLI `watch once [--listings-only] / run / status`; `GET /lawbuddy/api/sync`; yourlordships registered (tier 2) | ✅ Done, `test/legal_watch.test.js` (11 tests; full suite 59 pass / 2 skipped; DocVex 120 pass). Live: listing → 19 PDFs discovered |
 | 11 | First full yourlordships download (19 PDFs, 15.8 MB), then 304-only revalidation | ✅ Done live (57 s; 304 verified). Labels cleaned per watchlist (`cleanLabel`), and renamed links refresh their label without resetting the schedule |
 | 12 | Per-item validators in listings (S3 `ListObjectsV2`, RSS `guid`/`pubDate`) + SEBI RSS and AWS SC bucket watchlists | ⏳ Next |
@@ -781,11 +781,11 @@ The copy checker, run on the official edition against itself, found that **6 of 
 | 13b | Text fingerprint to close bytes-only changes | ✅ Done, `test/legal_fingerprint.test.js` (5 tests, incl. real PDFs: re-laid-out = same, one word changed = different) |
 | 13c | "Check my bare act" student upload: `web/check.html` + `web/check.js`, `POST /lawbuddy/api/copy-check`, `checkUploadedCopy` (temp-file-and-delete, sha cache, `sameAs`), nav link on every page; header wraps on phones (no horizontal scroll at 314 px) | ✅ Done, verified in the browser (real form submit) and over HTTP with the mirror PDF (cached answer in 0.03 s; non-PDF 415; cross-origin 403) |
 | 13d | Copy checks for BNS/BNSS/BSA once their official text is ingested (backlog 9) | ⏳ |
-| 15 | PDF worker env at `~/.venvs/lawbuddy-pdf` (outside iCloud, see §11c) + LawBuddy config now loads the repo-root `.env` and resolves relative `LEGAL_*` paths from the repo root (as `.env.example` assumes) | ✅ Done; the 2 previously skipped PDF tests now run (70/70) |
+| 15 | PDF worker env at `~/.venvs/lawbuddy-pdf` (outside iCloud, see §11c) + AdvocateVox config now loads the repo-root `.env` and resolves relative `LEGAL_*` paths from the repo root (as `.env.example` assumes) | ✅ Done; the 2 previously skipped PDF tests now run (70/70) |
 | 16 | Constitution running-head leak (§11b-2) | ✅ Fixed + live library repaired |
 | 17 | TLS chain completion for servers with incomplete chains (§5.5.7) | ✅ Done, `test/legal_tls_chain.test.js` (4 tests incl. real HTTPS with a throwaway CA); default transport of the polite fetcher |
 | 18 | Mirror provenance by Gazette ID + `resolve-provenance` backfill + hook on every tier-2 change (§5.5.7) | ✅ Done, `test/legal_provenance.test.js` (4 tests); live: 3 of 19 mirrors byte-identical to official Gazettes |
-| 19 | **Cite-or-Silence enforced in code** (regression found live on the new Groq key): with no official text, LawBuddy's decline was only a prompt instruction, and `gpt-oss-20b` answered "How do Kubernetes pods work?" from memory anyway. In law mode, with no grounded evidence, no model (Groq or Ollama) is called at all. A fixed decline (`LAW_NO_TEXT_REPLY`) streams through the normal token, voice and done path | ✅ Done, `packages/docvex/server/test/law_mode_guard.test.js`; verified in the browser: "Not in the library" + decline, while Article 21 still teaches from the official text |
+| 19 | **Cite-or-Silence enforced in code** (regression found live on the new Groq key): with no official text, AdvocateVox's decline was only a prompt instruction, and `gpt-oss-20b` answered "How do Kubernetes pods work?" from memory anyway. In law mode, with no grounded evidence, no model (Groq or Ollama) is called at all. A fixed decline (`LAW_NO_TEXT_REPLY`) streams through the normal token, voice and done path | ✅ Done, `packages/docvex/server/test/law_mode_guard.test.js`; verified in the browser: "Not in the library" + decline, while Article 21 still teaches from the official text |
 | 21 | **Case-law layer** (§7A): migration 11 (`court_case` + `case_provision`, `case_fts`, `case_brief`, `case_review`, `sc_import`); `parse/tar.js`, `parse/scMetadata.js` (catchword links, OCR forms, catchword groups), `sources/scOpenData.js` + `sync-sc [--force]`; `cases/rank.js` (points), `cases/service.js` (direct + related ranking); `cases/opinions.js` (authors, leading/dissent, running heads, Order of the Court); `cases/brief.js` (quote/opinion/number/outcome/judge guards); `enrich/groq.js`; API `GET /lawbuddy/api/cases`, `POST /lawbuddy/api/cases/:id/brief`; UI points table (top right) + judgment cards (`web/cases.js`); per-source `maxBytes` (150 MB for SC/HC PDFs); robots retry on network error; `add-review` CLI | ✅ Done, `test/legal_cases.test.js` (15 tests); all suites 224/224; live: 38,371 judgments, briefs for Maneka Gandhi and Puttaswamy verified in the browser |
 | 22 | **Citation graph + treatment** (§7A.8): migration 12 (`case_text`, `judgment_reference`, `case_citation`, `learned_alias`, `case_mention`, `sc_text_import`); `workers/pdf_text.py` (pdfium, streamed tar); `fetcher.streamDocument`; `parse/judgmentCitations.js` (3 reporter list formats, OCR repair, contexts, Article mentions); `cases/citationGraph.js` (official → learned → name resolution, foreign-report veto, Dawoodi Bohra bench rule); `cases/textIndex.js`; cited-by points, `relation: 'text'`; API `GET /lawbuddy/api/cases/:id/cited-by`; UI Cited column, Overruled chip and box, citing contexts; CLI `index-texts`, `citation-graph`, `cited-by`; SCR supplementary-volume citations fixed | ✅ Done, `test/legal_citation_graph.test.js` (12 tests); live: vault + 2024–2026 indexed. Full 1950–2023 backfill (19.9 GB streamed) pending the owner's go-ahead |
 | 23 | Ratio extraction (two-pass) + overnight brief prefetch for the top judgments of every Article | ⏳ |

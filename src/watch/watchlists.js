@@ -1,5 +1,5 @@
 /**
- * What LawBuddy watches for changes, declared per source.
+ * What AdvocateVox watches for changes, declared per source.
  *
  * A watchlist names one listing page and the pattern its documents' links
  * match. Every matching link becomes a watched document; each one is

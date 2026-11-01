@@ -376,7 +376,7 @@ test('a situation question is solved issue by issue, with every concept it raise
   assert.deepEqual(analysis.concepts.map((concept) => concept.id).sort(),
     ['abetment-conspiracy', 'causing-death', 'joint-liability', 'robbery-dacoity', 'territorial-reach']);
   const direction = answerDirection('scenario');
-  assert.match(direction, /Issues:[\s\S]*Facts that would change the answer:[\s\S]*What LawBuddy could not verify/);
+  assert.match(direction, /Issues:[\s\S]*Facts that would change the answer:[\s\S]*What AdvocateVox could not verify/);
   assert.match(direction, /point of law built into the question[\s\S]*as a claim to verify, not a fact/);
   assert.match(direction, /being present/);
 });

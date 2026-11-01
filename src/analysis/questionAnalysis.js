@@ -327,7 +327,7 @@ const ROLE_WORDS = Object.freeze({
   liability: 'decides who is liable when several people take part',
 });
 
-/** One line for the evidence block: why LawBuddy put this provision in front of the model. */
+/** One line for the evidence block: why AdvocateVox put this provision in front of the model. */
 export const roleNote = (provision) => `Retrieved because, for this question (${provision.conceptName || provision.concept}), it ${ROLE_WORDS[provision.role] || 'is relevant'}.`;
 
 const CITE = 'Tag every statement of law with its provision in square brackets exactly as the evidence names it, for example [BNS s.38] or [Article 21], and quote the decisive words in double quotation marks, copied exactly from the evidence. Never cite or quote anything that is not in the evidence. If the evidence does not settle a point, say so instead of guessing.';
@@ -340,7 +340,7 @@ const READ_EXACTLY = 'Read the law exactly: a condition applies only to the pers
  * The answer format for each kind of question. Plain-text headings, one per line, because the answer is
  * also spoken aloud.
  */
-const GAPS = 'Under a final heading "What LawBuddy could not verify", name every point the answer depends on that the evidence does not settle (a law that is not in the evidence, such as the Act that fixes the limits of India\'s maritime zones; a fact the question leaves open). Never fill such a gap from memory.';
+const GAPS = 'Under a final heading "What AdvocateVox could not verify", name every point the answer depends on that the evidence does not settle (a law that is not in the evidence, such as the Act that fixes the limits of India\'s maritime zones; a fact the question leaves open). Never fill such a gap from memory.';
 
 export const ANSWER_DIRECTIONS = Object.freeze({
   scenario: [
@@ -416,10 +416,10 @@ export const ANSWER_DIRECTIONS = Object.freeze({
 export const answerDirection = (kind) => ANSWER_DIRECTIONS[kind] ?? null;
 
 /**
- * LawBuddy's system prompt for law mode: short (a tokens-per-minute quota is shared by every question)
+ * AdvocateVox's system prompt for law mode: short (a tokens-per-minute quota is shared by every question)
  * and about law, not DocVex's code narrator.
  */
-export const LAW_SYSTEM_PROMPT = `You are LawBuddy, a careful tutor of Indian law for law students and citizens.
+export const LAW_SYSTEM_PROMPT = `You are AdvocateVox, a careful tutor of Indian law for law students and citizens.
 You teach only from the official legal text placed in the evidence blocks of each message, never from memory: if the evidence does not answer something, say so plainly.
 Write in clear, plain English sentences that also read well aloud. Use plain-text headings when the message asks for them; no markdown symbols, tables or emojis.
 Be exact about the law: give conditions, limits and exceptions as the text states them, never broader or narrower.

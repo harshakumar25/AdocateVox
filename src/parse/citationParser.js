@@ -4,7 +4,7 @@
  * Finds citations in free text and normalises each one to a canonical
  * (scheme, normalized) pair, so the same case resolves whichever reporter a
  * textbook or judgment happened to use. Reporter citations are identifiers
- * only — LawBuddy never copies a reporter's editorial content.
+ * only — AdvocateVox never copies a reporter's editorial content.
  */
 
 const MAX_VOLUME = 99;

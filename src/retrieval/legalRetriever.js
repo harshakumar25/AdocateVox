@@ -8,7 +8,7 @@
  * A provision that is not in the official text yields an explicit "not found"
  * notice so the tutor says so instead of inventing it.
  *
- * Used only by the /lawbuddy routes; node:sqlite is loaded lazily on first
+ * Used by the /advocatevox and /lawbuddy routes; node:sqlite is loaded lazily on first
  * use, so DocVex users without a legal store never touch it.
  */
 
@@ -254,7 +254,7 @@ const statuteEvidence = (label, version, { note = null, budget = MAX_EVIDENCE_CH
   };
 };
 
-/** Whether a correspondence row is LawBuddy's text alignment rather than the official MHA/NCRB table. */
+/** Whether a correspondence row is AdvocateVox's text alignment rather than the official MHA/NCRB table. */
 export const isAlignedRow = (row) => String(row.chapter || '').startsWith('text alignment');
 
 const correspondenceEvidence = ({ act, label }, rows) => {
@@ -276,11 +276,11 @@ const correspondenceEvidence = ({ act, label }, rows) => {
     url: rows[0].source_url,
     domain: hostOf(rows[0].source_url) ?? 'ncrb.gov.in',
     title: aligned
-      ? `Old and new law, by LawBuddy's text alignment — ${act} ${label}`
+      ? `Old and new law, by AdvocateVox's text alignment — ${act} ${label}`
       : `Official correspondence table (MHA/NCRB Sankalan) — ${act} ${label}`,
     content: [
       aligned
-        ? `LawBuddy's alignment of the official text of the new code with a bare-act copy of the repealed ${act} (not the official MHA/NCRB table) for ${act} ${label}:`
+        ? `AdvocateVox's alignment of the official text of the new code with a bare-act copy of the repealed ${act} (not the official MHA/NCRB table) for ${act} ${label}:`
         : `Official correspondence table published by MHA/NCRB (Sankalan of New Criminal Laws) for ${act} ${label}:`,
       ...rows.map(describe),
     ].join('\n'),
@@ -337,7 +337,7 @@ export const retrieveLegalEvidence = ({ store, references, asOf = new Date().toI
         const current = successorId ? store.getProvisionAsOf({ actId: successorId, label: successor, date: asOf }) : null;
         if (current) {
           const item = sectionEvidence(code, current, {
-            note: `In force in place of the repealed ${reference.act} ${reference.label} (by LawBuddy's text alignment of the two codes).`,
+            note: `In force in place of the repealed ${reference.act} ${reference.label} (by AdvocateVox's text alignment of the two codes).`,
           });
           if (item) evidence.push(item);
         }
@@ -416,7 +416,7 @@ export const conceptEvidence = ({ store, analysis, asOf }) => {
 };
 
 /**
- * Opens the legal store lazily: node:sqlite is only loaded once LawBuddy is
+ * Opens the legal store lazily: node:sqlite is only loaded once AdvocateVox is
  * actually used, and a store ingested after server start is picked up.
  */
 export const createLegalStoreLoader = ({ store = null, dbPath = config.LEGAL_DB_PATH } = {}) => {
@@ -501,7 +501,7 @@ const withAnalysis = (evidence, analysis, warnings = [], coverage = null) => Obj
 });
 
 /**
- * Retriever for the /lawbuddy route ("cite-or-silence"): named provisions are
+ * Retriever for the /advocatevox and /lawbuddy routes ("cite-or-silence"): named provisions are
  * grounded exactly; otherwise the official text is searched; otherwise there
  * is no evidence and the law-mode prompt tells the student so.
  */

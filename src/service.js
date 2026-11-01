@@ -1,5 +1,5 @@
 /**
- * LawBuddy read operations shared by the CLI and the /lawbuddy HTTP routes,
+ * AdvocateVox read operations shared by the CLI and the HTTP routes,
  * so both return the same answers: a provision as in force on a date, a
  * full-text search, and the official old↔new section correspondence.
  */
@@ -159,7 +159,7 @@ export const searchLaw = (store, query, { limit = 8, act = null, asOf = today() 
     if (!actId) return {
       ok: false, status: 404, reason: 'not-indexed', asOf, act: key,
       sourceUrl: selected.sourceUrl ?? selected.officialUrl,
-      error: 'This instrument has an official source identified, but its provision text has not been indexed and verified in LawBuddy.',
+      error: 'This instrument has an official source identified, but its provision text has not been indexed and verified in AdvocateVox.',
     };
   }
   const hits = store.searchProvisions(words, { limit, match: 'any', actId, asOf, officialOnly: true })
@@ -193,7 +193,7 @@ export const lookupSection = (store, actInput, sectionInput) => {
       new: row.new_label ? `${row.new_act} ${row.new_label} ${row.new_title ?? ''}`.trim() : `${row.new_act}: —`,
       old: row.old_label ? `${row.old_act} ${row.old_label} ${row.old_title ?? ''}`.trim() : `${row.old_act}: —`,
       source: row.source_url,
-      // 'alignment': LawBuddy matched the two texts (with the share of new wording found in the old section);
+      // 'alignment': AdvocateVox matched the two texts (with the share of new wording found in the old section);
       // 'official': the MHA/NCRB correspondence table.
       method: String(row.chapter || '').startsWith('text alignment') ? 'alignment' : 'official',
       shared: Number(/(\d+)%/.exec(row.chapter || '')?.[1] ?? NaN) / 100 || null,

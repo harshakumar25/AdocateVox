@@ -1,4 +1,4 @@
-// Shared helpers for the LawBuddy pages. All untrusted text goes through
+// Shared helpers for the AdvocateVox pages. All untrusted text goes through
 // textContent (never innerHTML) and every link is protocol-checked.
 
 /** Creates an element with optional class, text and attributes. */

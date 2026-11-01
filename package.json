@@ -1,7 +1,7 @@
 {
   "name": "@docvex/lawbuddy",
   "version": "0.1.0",
-  "description": "LawBuddy — Voice-first legal tutor with verified statutory grounding",
+  "description": "AdvocateVox — Voice-first legal tutor with verified statutory grounding",
   "type": "module",
   "main": "src/index.js",
   "scripts": {

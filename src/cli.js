@@ -1,5 +1,5 @@
 /**
- * LawBuddy legal-corpus CLI.
+ * AdvocateVox legal-corpus CLI.
  *
  *   npm run legal -- fetch <url>                 polite automatic fetch from a registered source
  *   npm run legal -- import <file> <url>         import a document a person downloaded from <url>
@@ -9,7 +9,7 @@
   npm run legal -- ingest-act <BNS | BNSS | BSA> [url]
   npm run legal -- align-codes [IPC | CrPC | IEA]   parse a stored Constitution PDF into versioned provisions
  *   npm run legal -- ingest-act <BNS|BNSS|BSA> [url]  load a Central Act's sections from its stored official Gazette PDF
- *   npm run legal -- align-codes [IPC|CrPC|IEA]   old ↔ new correspondence by text alignment (stored as LawBuddy's, not official)
+ *   npm run legal -- align-codes [IPC|CrPC|IEA]   old ↔ new correspondence by text alignment (stored as AdvocateVox's, not official)
  *   npm run legal -- article <number> [date]     an Article (or Preamble / Sch.7) as in force on a date
  *   npm run legal -- search <words...>           full-text search of current provisions
  *   npm run legal -- watch once [--listings-only] check every watched URL that is due, then route change events

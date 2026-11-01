@@ -3,12 +3,12 @@
  * Evidence Act) each sub-section of its replacement (BNS, BNSS, BSA) carries forward.
  *
  * Judgments, textbooks and students' notes cite "Section 302 IPC"; the law in force is BNS s.103(1).
- * The MHA/NCRB correspondence table is the authority, but until it is in the library LawBuddy can
+ * The MHA/NCRB correspondence table is the authority, but until it is in the library AdvocateVox can
  * derive the correspondence from the two texts themselves: each sub-section of the new code votes, with
  * every six-word run it shares with the old code, for the old section that run sits in. The winning
  * section is recorded with how much of the new wording it shares, so "carried forward unchanged" (≈1)
  * is told apart from "rewritten" (lower). A sub-section sharing too little has no predecessor
- * ("new"). The rows say they are LawBuddy's alignment, never the official table.
+ * ("new"). The rows say they are AdvocateVox's alignment, never the official table.
  */
 
 const SHINGLE = 6;

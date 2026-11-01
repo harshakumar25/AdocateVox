@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
- * The project that installed LawBuddy as a dependency (".../node_modules/@docvex/lawbuddy" → "..."), or null
- * when LawBuddy runs from its own checkout.
+ * The project that installed AdvocateVox as a dependency (".../node_modules/@docvex/lawbuddy" → "..."), or null
+ * when AdvocateVox runs from its own checkout.
  */
 export const hostRootOf = (pkgRoot) => {
   const parts = pkgRoot.split(path.sep);
@@ -15,8 +15,8 @@ export const hostRootOf = (pkgRoot) => {
 };
 
 /**
- * Every .env that can configure LawBuddy, most specific first: the working directory, the host project
- * (when installed as a dependency, its own .env holds GROQ_API_KEY and the library location), LawBuddy's
+ * Every .env that can configure AdvocateVox, most specific first: the working directory, the host project
+ * (when installed as a dependency, its own .env holds GROQ_API_KEY and the library location), AdvocateVox's
  * own checkout, and finally the .env beside the library data (LEGAL_ROOT). All are read and the first
  * value set wins (process.loadEnvFile never overwrites a variable already set), so a key missing from
  * one file is still found in the next instead of the first file found silently being the only one.
@@ -47,11 +47,11 @@ const parsePositiveInteger = (val, fallback) => {
 };
 
 // Base directory for relative legal store and raw vault paths: LEGAL_ROOT, else the first of the working
-// directory, the host project and LawBuddy's own checkout that holds a .lawbuddy/ library, else the cwd.
+// directory, the host project and AdvocateVox's own checkout that holds a .advocatevox/ or .lawbuddy/ library, else the cwd.
 export const resolveBaseDir = ({ cwd = process.cwd(), pkgRoot = PKG_ROOT, legalRoot = process.env.LEGAL_ROOT, exists = fs.existsSync } = {}) => {
   if (legalRoot) return path.resolve(legalRoot);
   const host = hostRootOf(pkgRoot);
-  for (const dir of [cwd, host, pkgRoot]) if (dir && exists(path.join(dir, '.lawbuddy'))) return dir;
+  for (const dir of [cwd, host, pkgRoot]) if (dir && (exists(path.join(dir, '.advocatevox')) || exists(path.join(dir, '.lawbuddy')))) return dir;
   return cwd;
 };
 
@@ -59,9 +59,9 @@ const baseDir = resolveBaseDir();
 const repoPath = (value, fallback) => path.resolve(baseDir, value || fallback);
 
 export const config = Object.freeze({
-  LEGAL_DB_PATH: repoPath(process.env.LEGAL_DB_PATH, '.lawbuddy/lawbuddy.db'),
-  LEGAL_RAW_DIR: repoPath(process.env.LEGAL_RAW_DIR, '.lawbuddy/raw'),
-  LEGAL_USER_AGENT: (process.env.LEGAL_USER_AGENT || 'LawBuddyBot/0.1 (+educational legal research)').trim(),
+  LEGAL_DB_PATH: repoPath(process.env.LEGAL_DB_PATH, fs.existsSync(path.join(baseDir, '.advocatevox/advocatevox.db')) ? '.advocatevox/advocatevox.db' : '.lawbuddy/lawbuddy.db'),
+  LEGAL_RAW_DIR: repoPath(process.env.LEGAL_RAW_DIR, fs.existsSync(path.join(baseDir, '.advocatevox/raw')) ? '.advocatevox/raw' : '.lawbuddy/raw'),
+  LEGAL_USER_AGENT: (process.env.LEGAL_USER_AGENT || 'AdvocateVoxBot/0.1 (+educational legal research)').trim(),
   LEGAL_FETCH_MIN_INTERVAL_MS: parsePositiveInteger(process.env.LEGAL_FETCH_MIN_INTERVAL_MS, 3000),
   LEGAL_FETCH_TIMEOUT_MS: parsePositiveInteger(process.env.LEGAL_FETCH_TIMEOUT_MS, 30000),
   LEGAL_FETCH_MAX_BYTES: parsePositiveInteger(process.env.LEGAL_FETCH_MAX_BYTES, 50 * 1024 * 1024),

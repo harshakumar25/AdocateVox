@@ -1,5 +1,5 @@
 /**
- * @docvex/lawbuddy
+ * AdvocateVox (@docvex/lawbuddy)
  * Voice-first legal tutor with verified statutory grounding.
  */
 

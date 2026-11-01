@@ -1,4 +1,4 @@
-"""LawBuddy PDF text extractor.
+"""AdvocateVox PDF text extractor.
 
 Usage: python -I pdf_extract.py <file.pdf>
 

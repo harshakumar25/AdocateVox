@@ -15,7 +15,7 @@ const cloudConsent = document.getElementById('cloud-speech-consent');
 let indianVoiceConfigured = false;
 const voiceNote = document.getElementById('voice-note');
 let storedNarrator = 'auto';
-try { storedNarrator = localStorage.getItem('lawbuddy.narrator') || 'auto'; speechRate.value = localStorage.getItem('lawbuddy.speech-rate') || '1'; } catch {}
+try { storedNarrator = localStorage.getItem('advocatevox.narrator') || localStorage.getItem('lawbuddy.narrator') || 'auto'; speechRate.value = localStorage.getItem('advocatevox.speech-rate') || localStorage.getItem('lawbuddy.speech-rate') || '1'; } catch {}
 const voiceToggle = document.getElementById('voice');
 const answer = document.getElementById('answer');
 const statusLine = document.getElementById('status');
@@ -234,7 +234,7 @@ if ('speechSynthesis' in window) { window.speechSynthesis.addEventListener('voic
 refreshVoices();
 narrator.addEventListener('change', () => {
   voice.reset(); storedNarrator = narrator.value;
-  try { localStorage.setItem('lawbuddy.narrator', narrator.value); } catch {}
+  try { localStorage.setItem('advocatevox.narrator', narrator.value); } catch {}
   if (narrator.value.startsWith('indian-')) { refreshVoices(); return; }
   voiceNote.textContent = narrator.value === 'auto' ? 'Using the configured server voice; browser speech is the fallback.' : 'Using your selected device voice for answers and fallback audio.';
 });
@@ -248,7 +248,7 @@ fetch('/advocatevox/api/speech').then((r) => r.ok ? r.json() : null).then((data)
   }
   refreshVoices();
 }).catch(() => {});
-speechRate.addEventListener('change', () => { voice.reset(); try { localStorage.setItem('lawbuddy.speech-rate', speechRate.value); } catch {} });
+speechRate.addEventListener('change', () => { voice.reset(); try { localStorage.setItem('advocatevox.speech-rate', speechRate.value); } catch {} });
 document.getElementById('voice-preview').addEventListener('click', () => {
   voice.reset();
   if (narrator.value === 'auto') voiceNote.textContent = 'Preview uses the browser fallback. The server narrator is heard during an answer.';
@@ -281,7 +281,7 @@ const officialText = (text) => {
   return [quote, more];
 };
 
-// Why a provision was retrieved for this question (from LawBuddy's question analysis).
+// Why a provision was retrieved for this question (from AdvocateVox's question analysis).
 const ROLE_CHIPS = Object.freeze({
   allows: ['Permits', 'ok'],
   right: ['Your right', 'ok'],
@@ -590,7 +590,7 @@ const teach = async (text) => {
     const response = await fetch('/advocatevox/teach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-      body: JSON.stringify({ text, stream: true, requestId: `lawbuddy_${Date.now()}_${id}` }),
+      body: JSON.stringify({ text, stream: true, requestId: `advocatevox_${Date.now()}_${id}` }),
       signal: controller.signal,
     });
     if (!response.ok || !response.body) {

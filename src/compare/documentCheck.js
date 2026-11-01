@@ -264,7 +264,7 @@ const checkActCopy = ({ store, act, pages, copyDate, sha256 }) => {
   if (sha256 && act.source?.source_sha256 === sha256) {
     return {
       kind: 'act-copy', act: act.title, actCode: act.code, verdict: 'official',
-      summary: `This PDF is byte for byte the official ${act.title} that LawBuddy's text comes from (${act.source.source_url}).`,
+      summary: `This PDF is byte for byte the official ${act.title} that AdvocateVox's text comes from (${act.source.source_url}).`,
       counts: { comparable: act.provisions.length, present: act.provisions.length, identical: act.provisions.length, reworded: 0, absent: 0 },
       partial: false, scope: 'complete', reworded: [], explained: [], absentLabels: [], newerThanCopy: [], textCurrentTo: null,
       official: { url: act.source.source_url, sha256: act.source.source_sha256 },
@@ -332,7 +332,7 @@ const checkRepealedCopy = ({ store, code, held }) => {
     act: pair.oldTitle,
     actCode: code,
     verdict: repeal ? 'repealed' : 'needs-review',
-    summary: `This is a copy of the ${pair.oldTitle}. ${repeal ? `Section ${pair.repealedBy.slice(2)} of the ${successor.title} repeals it, but its savings clauses can preserve the old law for earlier acts or pending matters.` : 'LawBuddy has not loaded the official repeal section needed to verify its transition.'} Check the relevant act or proceeding date and the full repeal-and-savings text before choosing which code applies. Section correspondence is a research aid, not an automatic legal equivalence.`,
+    summary: `This is a copy of the ${pair.oldTitle}. ${repeal ? `Section ${pair.repealedBy.slice(2)} of the ${successor.title} repeals it, but its savings clauses can preserve the old law for earlier acts or pending matters.` : 'AdvocateVox has not loaded the official repeal section needed to verify its transition.'} Check the relevant act or proceeding date and the full repeal-and-savings text before choosing which code applies. Section correspondence is a research aid, not an automatic legal equivalence.`,
     repeal: repeal ? { act: successor.title, label: repeal.label, heading: repeal.heading, text: repeal.text, validFrom: repeal.validFrom, source: successor.source ? { url: successor.source.source_url, sha256: successor.source.source_sha256 } : null } : null,
     successor: successor ? { code: successor.code, title: successor.title } : null,
     correspondence: mappings,
@@ -418,7 +418,7 @@ const quotationIndex = (held) => {
 
 /**
  * Every quotation in the write-up: found word for word in a provision (and not cut before a condition),
- * found only approximately, or not the wording of any provision LawBuddy holds (perhaps a judgment).
+ * found only approximately, or not the wording of any provision AdvocateVox holds (perhaps a judgment).
  */
 const checkQuotations = ({ text, held }) => {
   const index = quotationIndex(held);
@@ -468,7 +468,7 @@ const citationForms = ({ scheme, normalized }) => {
 
 /**
  * Every case citation: the Supreme Court judgment it belongs to (from the Court's record, or a citation
- * LawBuddy learned from parallel citations), whether the name printed beside it is that judgment's, and
+ * AdvocateVox learned from parallel citations), whether the name printed beside it is that judgment's, and
  * whether a later judgment overruled it.
  */
 const checkCitations = ({ store, text }) => {
@@ -597,11 +597,11 @@ const checkWriteUp = async ({ store, pages, held, critique }) => {
     || citations.some((item) => item.status === 'not-in-index' || item.status === 'other-court');
   const verdict = !checked ? 'nothing-to-check' : errors.length ? 'unreliable' : unchecked ? 'needs-review' : warnings.length ? 'use-with-care' : 'reliable';
   const summaries = {
-    'nothing-to-check': 'LawBuddy found no provision, quotation of the law or case citation in this document to check.',
+    'nothing-to-check': 'AdvocateVox found no provision, quotation of the law or case citation in this document to check.',
     unreliable: `${errors.length} statement${errors.length === 1 ? '' : 's'} in this document conflict with the official text or the Court's record. Do not rely on it without correcting them.`,
     'use-with-care': `Nothing in it conflicts with the official text, but ${warnings.length} point${warnings.length === 1 ? '' : 's'} need care: repealed law, a quotation cut short, an overruled judgment or a claim broader than the law.`,
     'needs-review': 'Some references or claims could not be fully verified. Review the unchecked items and the linked official sources before relying on this document.',
-    reliable: 'The references, quotations and citations checked here match the sources in LawBuddy\'s library. This does not verify claims outside the checked scope.',
+    reliable: 'The references, quotations and citations checked here match the sources in AdvocateVox\'s library. This does not verify claims outside the checked scope.',
   };
   return {
     kind: 'write-up',
@@ -638,7 +638,7 @@ export const checkDocument = async ({ store, pages, copyDate = null, sha256 = nu
     ...base,
     kind: 'unsupported',
     verdict: 'needs-review',
-    summary: 'This appears to be an Act, but its official text is not in LawBuddy’s library. It cannot be checked here yet.',
+    summary: 'This appears to be an Act, but its official text is not in AdvocateVox’s library. It cannot be checked here yet.',
   };
   if (identity.kind === 'repealed') return { ...base, ...checkRepealedCopy({ store, code: identity.code, held }) };
   if (identity.kind === 'act-copy') return { ...base, ...checkActCopy({ store, act: held.find((act) => act.code === identity.code), pages, copyDate, sha256 }) };

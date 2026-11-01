@@ -25,7 +25,7 @@ export const CENTRAL_ACTS = Object.freeze({
     inForceFrom: '2024-07-01',
     // S.O. 850(E) brought the Sanhita into force except section 106(2) (hit-and-run by drivers).
     notInForce: Object.freeze({
-      's.106': 'Sub-section (2) of this section was excluded when the Sanhita was brought into force on 1 July 2024 (S.O. 850(E), 23 February 2024). LawBuddy has not verified any later notification bringing it into force: do not treat sub-section (2) as law in force.',
+      's.106': 'Sub-section (2) of this section was excluded when the Sanhita was brought into force on 1 July 2024 (S.O. 850(E), 23 February 2024). AdvocateVox has not verified any later notification bringing it into force: do not treat sub-section (2) as law in force.',
     }),
   }),
   BNSS: Object.freeze({

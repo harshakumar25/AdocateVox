@@ -1,5 +1,5 @@
 /**
- * Registry of legal sources LawBuddy may fetch from.
+ * Registry of legal sources AdvocateVox may fetch from.
  *
  * Tier decides what may be cited as evidence:
  *   0 = primary official (court, Gazette, India Code, legislative.gov.in) — citable.

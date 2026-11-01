@@ -1,5 +1,5 @@
 /**
- * LawBuddy legal store on Node's built-in SQLite (node:sqlite) with FTS5.
+ * AdvocateVox legal store on Node's built-in SQLite (node:sqlite) with FTS5.
  *
  * Holds the verified legal corpus: sources and their fetch history,
  * statutes with point-in-time provision versions, and court cases keyed by
@@ -750,7 +750,7 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
   };
 
   /**
-   * Records a review. Only reviews with a named, credentialed reviewer whose identity a LawBuddy
+   * Records a review. Only reviews with a named, credentialed reviewer whose identity an AdvocateVox
    * administrator verified (verifiedBy + verifiedAt) are ever shown (IS 19000:2022 practice).
    */
   const addCaseReview = ({
@@ -979,7 +979,7 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
   /** Size of the stored library, for health checks. */
   const stats = () => ({ ...statements.stats.get() });
 
-  /** What the library holds and where each part came from, for the LawBuddy home page. */
+  /** What the library holds and where each part came from, for the AdvocateVox home page. */
   const librarySummary = () => ({
     acts: statements.actsSummary.all().map((act) => {
       const source = statements.actSource.get(act.id);

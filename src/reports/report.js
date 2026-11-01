@@ -123,7 +123,7 @@ export const createLegalReport = async ({ store, input, generate, onlineSearch =
         if (!identity.matched || evidence.some((q) => !q || !header.includes(q)) || Number.isNaN(parsedDecision)
           || new Date(parsedDecision).toISOString().slice(0, 10) !== task.decisionDate) {
           return { ...stoppedCase(scope, task, resolveCaseRequest(store, task), discovery ? [] : ['identity supported by matching header quotations']),
-            ...(discovery ? { discovery: { ...discovery, text: undefined, paragraphs: undefined, message: 'LawBuddy located a judgment but could not cross-check its identity against the PDF. Retry research or clarify the case name.' }, nextSteps: ['Retry research or clarify the case name.'] } : {}),
+            ...(discovery ? { discovery: { ...discovery, text: undefined, paragraphs: undefined, message: 'AdvocateVox located a judgment but could not cross-check its identity against the PDF. Retry research or clarify the case name.' }, nextSteps: ['Retry research or clarify the case name.'] } : {}),
             runId: runner.runId, provenance: { stages: runner.records, retrieverVersion: config.retrieverVersion } };
         }
       }

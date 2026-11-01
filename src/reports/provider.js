@@ -48,7 +48,7 @@ export const generateReportText = async ({ systemPrompt, prompt, provider, optio
       url = 'https://api.groq.com/openai/v1/chat/completions';
       request = { model: settings.model, messages, temperature, seed: chosenSeed, max_completion_tokens: outputTokens,
         ...(jsonMode ? { response_format: settings.model.startsWith('openai/gpt-oss-')
-          ? { type: 'json_schema', json_schema: { name: 'lawbuddy_stage', strict: true, schema } } : { type: 'json_object' } } : {}) };
+          ? { type: 'json_schema', json_schema: { name: 'advocatevox_stage', strict: true, schema } } : { type: 'json_object' } } : {}) };
     } else {
       url = 'https://api.x.ai/v1/responses';
       request = { model: settings.model, input: messages, temperature, store: false, max_output_tokens: outputTokens,

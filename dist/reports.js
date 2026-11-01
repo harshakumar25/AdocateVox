@@ -104,7 +104,7 @@ exportButton.addEventListener('click', () => {
   try {
     const bytes = buildReportDocx(currentReport);
     const url = URL.createObjectURL(new Blob([bytes], { type: WORD_MIME }));
-    const a = el('a'); a.href = url; a.download = `lawbuddy-${currentReport.caseCheck ? 'case-identity-check' : 'legal-report'}-${currentReport.asOf}.docx`;
+    const a = el('a'); a.href = url; a.download = `advocatevox-${currentReport.caseCheck ? 'case-identity-check' : 'legal-report'}-${currentReport.asOf}.docx`;
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
     status.textContent = 'Word document downloaded.';
   } catch (cause) { error.textContent = cause.message; error.hidden = false; }

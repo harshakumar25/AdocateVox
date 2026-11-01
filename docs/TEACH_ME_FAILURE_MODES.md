@@ -38,7 +38,7 @@ The final error was an assurance mismatch. “Grounded” means the answer had s
 | Citation validity stands in for legal accuracy | A real section supports some facts, but the answer omits who a proviso applies to. | Check each material claim, including limits, exceptions and conditions, against the exact clause. |
 | Review follows publication | An advisory critic flags errors after the learner sees or hears them. | Block or revise high-stakes answers before delivery when required evidence or claim checks fail. |
 | Narrow test examples | Direct questions such as “How do I file an FIR?” pass, but adversarially similar wording is not exercised. | Test minimal pairs and realistic narratives, including accused versus complainant. |
-| Multiple repositories own one answer path | LawBuddy selects evidence; DocVex chooses the no-text response and streaming behaviour. | Test the integrated path and keep contracts for coverage and warnings explicit. |
+| Multiple repositories own one answer path | AdvocateVox selects evidence; DocVex chooses the no-text response and streaming behaviour. | Test the integrated path and keep contracts for coverage and warnings explicit. |
 
 These are architectural risks, not a claim that every Teach me answer has failed. The reported response is direct evidence of the first, third and fourth patterns in this incident.
 
@@ -49,7 +49,7 @@ These are architectural risks, not a claim that every Teach me answer has failed
 - Retrieval now requires **both** core IT Act provisions, with expected headings and official provenance, before answering a cyber-testing merits question. This gate runs before named-reference and search returns, so a named BNSS section cannot bypass it. The page states the gap and links the India Code portal.
 - IT Act citation tags are normalised to the same provision identity used by the answer checker and claim critic.
 - The DocVex no-text path emits a cyber-specific reply without calling a model. A regression test covers the user's failure pattern and a case “against me” phrased as an FIR.
-- A live POST to `/lawbuddy/teach` with an IT Act section 66 and BNSS section 173 mixed question returned `groundingStatus: "ungrounded"`, no sources, and `model: "none: declined without official text"` on 24 October 2026. The LawBuddy suite passed 158 tests.
+- A live POST to `/lawbuddy/teach` with an IT Act section 66 and BNSS section 173 mixed question returned `groundingStatus: "ungrounded"`, no sources, and `model: "none: declined without official text"` on 24 October 2026. The AdvocateVox suite passed 158 tests.
 
 This repair prevents the original wrong-law answer. A later indexing pass added IT Act sections 43 and 66 from an official edition marked **as on 27 June 2025**. Those sections are available for a suitable historical as-of date, but the edition is **not verified for October 2026**. Teach me therefore still declines the current cyber scenario. Extending coverage requires a newer official edition, raw document hash, section extraction, amendment and commencement review under the [library import gate](LEGAL_LIBRARY_ARCHITECTURE.md#import-gate-for-a-new-act-or-rule).
 
@@ -78,4 +78,4 @@ The regression set should include these pairs at minimum:
 | “Explain IT Act section 66 and BNSS section 173 in my case.” | Preserve both named sources, disclose the absent IT Act text and avoid a BNSS-only merits answer. |
 | A section 173 summary that says videography is always required | Flag the omitted disability and specified-offence conditions. |
 
-Run these through both the LawBuddy retriever tests and the DocVex streaming route. Inspect the UI badge, answer, cited source cards and warning text. Passing citation counts alone is not an acceptance criterion.
+Run these through both the AdvocateVox retriever tests and the DocVex streaming route. Inspect the UI badge, answer, cited source cards and warning text. Passing citation counts alone is not an acceptance criterion.

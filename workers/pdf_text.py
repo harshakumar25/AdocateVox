@@ -1,4 +1,4 @@
-"""LawBuddy fast page-text extractor (pdfium) for indexing judgments in bulk.
+"""AdvocateVox fast page-text extractor (pdfium) for indexing judgments in bulk.
 
 Usage:
   python -I pdf_text.py --tar            read a tar archive of PDFs from stdin (streamed)

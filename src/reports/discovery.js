@@ -63,7 +63,7 @@ export const discoverReportCase = async ({ store, task, input, fetcher, extract 
   const selected = input.selectedCaseId ? candidates.find((c) => String(c.id) === String(input.selectedCaseId))
     : candidates.length === 1 ? candidates[0] : null;
   if (!selected) return { status: candidates.length ? 'choose-case' : 'research-incomplete', candidates: candidates.map(publicCandidate), log,
-    message: candidates.length ? 'Several judgments match this request. Choose the intended case; LawBuddy will retrieve and read it.'
+    message: candidates.length ? 'Several judgments match this request. Choose the intended case; AdvocateVox will retrieve and read it.'
       : 'Automatic research did not locate a matching judgment in the available Supreme Court collection. Try a fuller case name or describe the dispute. Court details and judgment uploads are optional.' };
   if (!fetcher || !selected.pdf_url) return { status: 'research-incomplete', candidates: candidates.map(publicCandidate), log,
     message: 'The case was located, but its judgment download is unavailable. Please retry when the source is reachable.' };
@@ -85,6 +85,6 @@ export const discoverReportCase = async ({ store, task, input, fetcher, extract 
   } catch (error) {
     log.push({ action: 'read-judgment', ok: false, error: error.message });
     return { status: 'research-incomplete', candidates: candidates.map(publicCandidate), log,
-      message: 'The case was located, but LawBuddy could not read its judgment. Retry research; no legal findings have been invented.' };
+      message: 'The case was located, but AdvocateVox could not read its judgment. Retry research; no legal findings have been invented.' };
   }
 };

@@ -49,7 +49,7 @@ Set SARVAM_API_KEY in the server environment (the development host reads
 in browser code. Consent is not persisted across reloads. Missing setup disables
 cloud choices. Device voices remain available. No cloud fallback occurs silently.
 
-POST /lawbuddy/api/speech limits text to 2500 characters and request bodies to
+POST /advocatevox/api/speech limits text to 2500 characters and request bodies to
 16 KB, checks origin and JSON content type, bounds concurrency to three and uses
 a 30-second upstream timeout. Responses are no-store. The adapter does not log
 or persist text/audio. Provider retention is governed by the provider's terms.

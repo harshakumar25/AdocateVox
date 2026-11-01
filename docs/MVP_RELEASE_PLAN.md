@@ -1,4 +1,4 @@
-# LawBuddy advocate MVP: verified law before generated work
+# AdvocateVox advocate MVP: verified law before generated work
 
 **Decision date:** 24 October 2026. **First customer:** an Indian litigation advocate or small chamber checking statutory references while preparing a filing. Students can use the same source layer for learning, but their tutor is not the release gate for a practitioner product.
 

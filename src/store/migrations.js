@@ -1,5 +1,5 @@
 /**
- * Ordered schema migrations for the LawBuddy legal store.
+ * Ordered schema migrations for the AdvocateVox legal store.
  * Each entry runs once; PRAGMA user_version records how many have been applied.
  * Never edit a shipped migration — append a new one instead.
  */

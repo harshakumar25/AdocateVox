@@ -14,7 +14,7 @@ const writePrivate = (file, value) => {
 export const createStageRunner = ({ input, generate, config, options = {} }) => {
   const runId = input.resumeRunId || randomUUID();
   if (!/^[a-f0-9-]{36}$/.test(runId)) throw Object.assign(new Error('Invalid resume run ID.'), { statusCode: 400 });
-  const root = options.checkpointDir === false ? null : path.resolve(options.checkpointDir || process.env.REPORT_CHECKPOINT_DIR || '.lawbuddy/report-runs');
+  const root = options.checkpointDir === false ? null : path.resolve(options.checkpointDir || process.env.REPORT_CHECKPOINT_DIR || (existsSync('.advocatevox/report-runs') ? '.advocatevox/report-runs' : '.lawbuddy/report-runs'));
   const dir = root && path.join(root, runId);
   const { resumeRunId, ...request } = input;
   const settings = Object.fromEntries(['ollama', 'groq', 'grok'].map((p) => [p, providerSettings(p, options)]));

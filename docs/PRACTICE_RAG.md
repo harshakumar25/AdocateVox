@@ -8,7 +8,7 @@ Run `node scripts/index-practice-rag.mjs` to retry unavailable documents and ski
 
 Landing pages are never indexed as law. PDF links must identify the named instrument; unrelated regulator guidance is not a substitute. Multi-instrument Gazettes require document boundaries before import. Licensed standards are recorded as unavailable. UK legislation is excluded from this Indian corpus. The importer records whole retrieved PDF snapshots, not a guarantee of all amendments, schedules or correct OCR reading order. Title checks are conservative heuristics, not legal validation.
 
-`GET /lawbuddy/api/rag/search?q=...&topic=...&instrument=...` returns ranked chunks with source provenance and a legal-currency warning. `GET /lawbuddy/api/rag/coverage` returns per-instrument chunk counts and failures. The homepage broader practice index displays corpus counts separately from verified provision counts, and offers full-text search using the selected practice area.
+`GET /advocatevox/api/rag/search?q=...&topic=...&instrument=...` returns ranked chunks with source provenance and a legal-currency warning. `GET /advocatevox/api/rag/coverage` returns per-instrument chunk counts and failures. The homepage broader practice index displays corpus counts separately from verified provision counts, and offers full-text search using the selected practice area.
 
 Storage uses WAL, transactions and FTS replacement to prevent stale chunks surviving document replacement. Query terms are escaped; SQL filters are bound. Chunks retain exact extracted characters and page offsets. No cloud model or embedding service receives source text during indexing.
 

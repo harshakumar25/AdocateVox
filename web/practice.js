@@ -279,7 +279,7 @@ document.getElementById('export-matter').addEventListener('click', () => {
   const payload = { schemaVersion: 1, exportedAt: new Date().toISOString(), matter: input() };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  const link = el('a', { attrs: { href: url, download: 'lawbuddy-matter.json' } });
+  const link = el('a', { attrs: { href: url, download: 'advocatevox-matter.json' } });
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   setStatus('Matter JSON exported to your downloads. Protect this file as a client record.');
@@ -300,7 +300,7 @@ exportWord.addEventListener('click', () => {
   try {
     const bytes = buildWorkingDraftDocx(currentPacket);
     const url = URL.createObjectURL(new Blob([bytes], { type: WORD_MIME }));
-    const link = el('a', { attrs: { href: url, download: `lawbuddy-working-draft-${indiaToday()}.docx` } });
+    const link = el('a', { attrs: { href: url, download: `advocatevox-working-draft-${indiaToday()}.docx` } });
     document.body.appendChild(link);
     link.click();
     link.remove();

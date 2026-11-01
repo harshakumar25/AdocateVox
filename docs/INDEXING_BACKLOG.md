@@ -14,7 +14,7 @@
 
 The [India Code migration notice](https://www.indiacode.nic.in/) points to `indiacode.gov.in`. The new [India Code DSpace API](https://indiacode.gov.in/server/api) exposes central Act PDFs and section records. Old catalogue handle links should be replaced **only after resolving the matching central item**; the same Act title can also appear under State records. The IT Act importer pins the central Act ID `AC_CEN_45_76_00001_200021_1517807324077`, exact PDF and section-record hashes, headings, PDF page clauses and printed edition date. This pattern can be reused for other Acts after a legal editor reviews each manifest. It is not a bulk “download and mark current” switch.
 
-The [central Contract Act PDF](https://indiacode.gov.in/server/api/core/bitstreams/e7571d39-11a7-4a2c-86e3-c515ae43e617/content) and section 10 record were also located and checked for identity. The PDF does **not** print an as-on edition date. It remains source-identified until its amendment and commencement trail establishes a defensible review interval; LawBuddy must not infer freshness from the website's 2026 migration timestamp.
+The [central Contract Act PDF](https://indiacode.gov.in/server/api/core/bitstreams/e7571d39-11a7-4a2c-86e3-c515ae43e617/content) and section 10 record were also located and checked for identity. The PDF does **not** print an as-on edition date. It remains source-identified until its amendment and commencement trail establishes a defensible review interval; AdvocateVox must not infer freshness from the website's 2026 migration timestamp.
 
 ## Repeatable IT Act import
 
