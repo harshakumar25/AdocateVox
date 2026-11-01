@@ -14,15 +14,7 @@ import { config } from '../config.js';
 import { MIGRATIONS } from './migrations.js';
 import { JUDGMENT_READER_VERSION, TREATMENT_RANK } from '../parse/judgmentCitations.js';
 import { findSourceForUrl, isCitableOfficialSource } from '../sources/registry.js';
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
-const assertIsoDate = (value, field) => {
-  if (typeof value !== 'string' || !ISO_DATE.test(value) || Number.isNaN(Date.parse(value))
-    || new Date(value).toISOString().slice(0, 10) !== value) {
-    throw new TypeError(`${field} must be an ISO date (YYYY-MM-DD), got ${JSON.stringify(value)}`);
-  }
-};
+import { assertIsoDate } from '../common/dates.js';
 
 // Question words and fillers that would otherwise dominate an "any word" search.
 const QUESTION_STOP_WORDS = new Set([

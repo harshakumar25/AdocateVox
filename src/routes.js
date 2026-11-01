@@ -16,7 +16,7 @@ const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
 
 /**
  * The request body as a Buffer, or null when it exceeds `maxBytes`. An oversized body is
- * drained rather than buffered, so the 413 can still be sent on the same connection.
+ * detached and drained immediately rather than buffered in memory.
  */
 const readBody = (req, maxBytes) =>
   new Promise((resolve, reject) => {
@@ -28,21 +28,49 @@ const readBody = (req, maxBytes) =>
     }
     const chunks = [];
     let total = 0;
-    req.on('data', (chunk) => {
+    let exceeded = false;
+    const onData = (chunk) => {
       total += chunk.length;
-      if (total <= maxBytes) chunks.push(chunk);
+      if (total > maxBytes) {
+        exceeded = true;
+        req.removeListener('data', onData);
+        req.resume();
+        resolve(null);
+        return;
+      }
+      chunks.push(chunk);
+    };
+    req.on('data', onData);
+    req.on('end', () => {
+      if (!exceeded) resolve(Buffer.concat(chunks));
     });
-    req.on('end', () => resolve(total > maxBytes ? null : Buffer.concat(chunks)));
     req.on('error', reject);
   });
 
-// One PDF is read at a time (uploads and judgment briefs alike): each read starts a Python worker.
-let pdfQueue = Promise.resolve();
-const queuePdfWork = (task) => {
-  const run = pdfQueue.then(task);
-  pdfQueue = run.catch(() => {});
-  return run;
+// Bounded concurrency pool for PDF extraction workers (default 2 parallel workers, configurable).
+const createWorkerPool = (concurrency = 2) => {
+  let running = 0;
+  const queue = [];
+  const next = () => {
+    if (running >= concurrency || queue.length === 0) return;
+    const { task, resolve, reject } = queue.shift();
+    running += 1;
+    Promise.resolve()
+      .then(task)
+      .then(resolve, reject)
+      .finally(() => {
+        running -= 1;
+        next();
+      });
+  };
+  return (task) =>
+    new Promise((resolve, reject) => {
+      queue.push({ task, resolve, reject });
+      next();
+    });
 };
+
+const queuePdfWork = createWorkerPool(Number(process.env.MAX_PDF_CONCURRENCY) || 2);
 
 // One polite fetcher per open library, so per-host spacing and robots.txt caching hold across requests.
 const fetchers = new WeakMap();
@@ -256,10 +284,18 @@ export const handleAdvocateVoxApiRoute = async (req, res, {
     else {
       let input;
       try { input = JSON.parse(body.toString('utf8')); } catch { input = null; }
-      result = input && typeof input === 'object' ? await createLegalReport({ store, input, fetcher: fetcherFor(store), discoverCase: reportDiscover,
-        generate: (args) => reportGenerate({ ...args, options: reportOptions }),
-        options: { ...reportOptions, checkpointDir: reportOptions.REPORT_CHECKPOINT_DIR || undefined },
-      }) : { ok: false, status: 400, error: 'Send a JSON report request.' };
+      if (!input || typeof input !== 'object') {
+        result = { ok: false, status: 400, error: 'Send a JSON report request.' };
+      } else {
+        try {
+          result = await createLegalReport({ store, input, fetcher: fetcherFor(store), discoverCase: reportDiscover,
+            generate: (args) => reportGenerate({ ...args, options: reportOptions }),
+            options: { ...reportOptions, checkpointDir: reportOptions.REPORT_CHECKPOINT_DIR || undefined },
+          });
+        } catch (err) {
+          result = { ok: false, status: err.statusCode || 500, error: err.message || 'Report generation failed.' };
+        }
+      }
     }
   } else if (isUpload) {
     result = await handleCopyUpload(req, store, parsedUrl, checkUpload);

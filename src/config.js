@@ -58,6 +58,29 @@ export const resolveBaseDir = ({ cwd = process.cwd(), pkgRoot = PKG_ROOT, legalR
 const baseDir = resolveBaseDir();
 const repoPath = (value, fallback) => path.resolve(baseDir, value || fallback);
 
+export const resolvePythonBinary = ({
+  envPython = process.env.LEGAL_PYTHON,
+  pkgRoot = PKG_ROOT,
+  base = baseDir,
+  homedir = process.env.HOME || '',
+  exists = fs.existsSync,
+} = {}) => {
+  if (envPython) {
+    const candidate = path.isAbsolute(envPython) ? envPython : path.resolve(base, envPython);
+    if (exists(candidate)) return candidate;
+  }
+  const standardVenvs = [
+    path.join(pkgRoot, 'workers/.venv/bin/python'),
+    path.join(pkgRoot, '.venv/bin/python'),
+    path.join(homedir, '.venvs/advocatevox-pdf/bin/python'),
+    path.join(homedir, '.venvs/lawbuddy-pdf/bin/python'),
+  ];
+  for (const candidate of standardVenvs) {
+    if (candidate && exists(candidate)) return candidate;
+  }
+  return envPython ? path.resolve(base, envPython) : (process.env.PYTHON || 'python3');
+};
+
 export const config = Object.freeze({
   LEGAL_DB_PATH: repoPath(process.env.LEGAL_DB_PATH, fs.existsSync(path.join(baseDir, '.advocatevox/advocatevox.db')) ? '.advocatevox/advocatevox.db' : '.lawbuddy/lawbuddy.db'),
   LEGAL_RAW_DIR: repoPath(process.env.LEGAL_RAW_DIR, fs.existsSync(path.join(baseDir, '.advocatevox/raw')) ? '.advocatevox/raw' : '.lawbuddy/raw'),
@@ -65,9 +88,7 @@ export const config = Object.freeze({
   LEGAL_FETCH_MIN_INTERVAL_MS: parsePositiveInteger(process.env.LEGAL_FETCH_MIN_INTERVAL_MS, 3000),
   LEGAL_FETCH_TIMEOUT_MS: parsePositiveInteger(process.env.LEGAL_FETCH_TIMEOUT_MS, 30000),
   LEGAL_FETCH_MAX_BYTES: parsePositiveInteger(process.env.LEGAL_FETCH_MAX_BYTES, 50 * 1024 * 1024),
-  LEGAL_PYTHON: process.env.LEGAL_PYTHON
-    ? path.resolve(baseDir, process.env.LEGAL_PYTHON)
-    : path.join(PKG_ROOT, 'workers/.venv/bin/python'),
+  LEGAL_PYTHON: resolvePythonBinary(),
   LEGAL_PDF_WORKER: process.env.LEGAL_PDF_WORKER
     ? path.resolve(baseDir, process.env.LEGAL_PDF_WORKER)
     : path.join(PKG_ROOT, 'workers/pdf_extract.py'),

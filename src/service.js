@@ -8,17 +8,11 @@ import { CONSTITUTION_ACT } from './ingest/constitution.js';
 import { CENTRAL_ACTS, actRecord } from './ingest/act.js';
 import { PRACTICE_ACTS, PRACTICE_TOPICS, cataloguedActs } from './ingest/libraryCatalog.js';
 import { isCitableOfficialSource } from './sources/registry.js';
+import { isValidIsoDate, todayKolkata } from './common/dates.js';
 
 const ACT_ALIASES = Object.freeze({ bns: 'BNS', ipc: 'IPC', bnss: 'BNSS', crpc: 'CrPC', bsa: 'BSA', iea: 'IEA' });
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const validIsoDate = (value) => ISO_DATE.test(value) && !Number.isNaN(Date.parse(value))
-  && new Date(value).toISOString().slice(0, 10) === value;
-
-const INDIA_DATE = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
-export const today = (instant = new Date()) => {
-  const fields = Object.fromEntries(INDIA_DATE.formatToParts(instant).filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
-  return `${fields.year}-${fields.month}-${fields.day}`;
-};
+const validIsoDate = isValidIsoDate;
+export const today = todayKolkata;
 
 /** "21", "art 21a", "Article 21A", "preamble", "sch 7", "Schedule 7" → "Art.21A" / "Preamble" / "Sch.7". */
 export const toConstitutionLabel = (input) => {

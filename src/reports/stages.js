@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, renameSync, existsSync, readdirSync, statSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { parseJson, validSchema } from './json.js';
 import { providerSettings } from './provider.js';
@@ -9,6 +9,28 @@ const writePrivate = (file, value) => {
   const temp = `${file}.${randomUUID()}.tmp`;
   writeFileSync(temp, JSON.stringify(value, null, 2), { mode: 0o600 });
   renameSync(temp, file);
+};
+
+const DEFAULT_RETENTION_MS = (Number(process.env.REPORT_CHECKPOINT_TTL_DAYS) || 7) * 24 * 60 * 60 * 1000;
+
+export const pruneOldReportRuns = (root, maxAgeMs = DEFAULT_RETENTION_MS) => {
+  if (!root || !existsSync(root)) return 0;
+  const cutoff = Date.now() - maxAgeMs;
+  let pruned = 0;
+  try {
+    for (const entry of readdirSync(root, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const dirPath = path.join(root, entry.name);
+      try {
+        const stats = statSync(dirPath);
+        if (stats.mtimeMs < cutoff) {
+          rmSync(dirPath, { recursive: true, force: true });
+          pruned += 1;
+        }
+      } catch {}
+    }
+  } catch {}
+  return pruned;
 };
 
 export const createStageRunner = ({ input, generate, config, options = {} }) => {
@@ -22,6 +44,7 @@ export const createStageRunner = ({ input, generate, config, options = {} }) => 
   if (input.resumeRunId && (!dir || !existsSync(path.join(dir, 'manifest.json')))) throw Object.assign(new Error('Saved report run not found.'), { statusCode: 404 });
   if (dir) {
     mkdirSync(dir, { recursive: true, mode: 0o700 });
+    pruneOldReportRuns(root);
     const manifest = path.join(dir, 'manifest.json');
     if (existsSync(manifest)) {
       if (JSON.parse(readFileSync(manifest, 'utf8')).requestHash !== requestHash) throw Object.assign(new Error('Resume requires the same request, source texts and model settings.'), { statusCode: 409 });

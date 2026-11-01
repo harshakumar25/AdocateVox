@@ -18,16 +18,10 @@ import { CONSTITUTION_ACT } from '../ingest/constitution.js';
 import { compareCopyWithProvisions, latestEffectiveDate, newerThan } from './copyCheck.js';
 import { checkDocument } from './documentCheck.js';
 import { runTextWorker } from '../cases/textIndex.js';
+import { isValidIsoDate, toIsoDay } from '../common/dates.js';
 
 /** Acts whose official text the library holds, so copies of them can be checked. */
 export const CHECKABLE_ACTS = Object.freeze({ constitution: CONSTITUTION_ACT });
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
-const toIsoDay = (httpDate) => {
-  const time = Date.parse(httpDate ?? '');
-  return Number.isNaN(time) ? null : new Date(time).toISOString().slice(0, 10);
-};
 
 const verdictFor = ({ newerThanCopy, differs, compared }, fileDate, textCurrentTo) => {
   if (!newerThanCopy.length && !differs.length) {
@@ -148,7 +142,7 @@ export const checkUploadedCopy = async ({
   store, body, act = 'constitution', copyDate = null, extract = extractPdfText, now = Date.now, tmpRoot = os.tmpdir(), readPages, critique, cloudClaims = false,
 }) => {
   if (!looksLikePdf(body)) return { ok: false, status: 415, error: 'That file is not a PDF.' };
-  if (copyDate !== null && (!ISO_DATE.test(copyDate) || Number.isNaN(Date.parse(copyDate)))) {
+  if (copyDate !== null && !isValidIsoDate(copyDate)) {
     return { ok: false, status: 400, error: 'The date of your copy must be YYYY-MM-DD.' };
   }
   if (act === 'auto') return checkUploadedDocument({ store, body, copyDate, tmpRoot, readPages, critique, cloudClaims });

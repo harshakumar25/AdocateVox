@@ -1,11 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { hostRootOf, loadLegalEnv, resolveBaseDir } from '../src/config.js';
+import { hostRootOf, loadLegalEnv, resolveBaseDir, resolvePythonBinary } from '../src/config.js';
 
 test('LawBuddy finds its host project when installed as a dependency', () => {
   assert.equal(hostRootOf(path.join('/work', 'docvex', 'node_modules', '@docvex', 'lawbuddy')), path.join('/work', 'docvex'));
   assert.equal(hostRootOf(path.join('/work', 'lawbuddy')), null);
+});
+
+test('resolvePythonBinary discovers custom, standard venvs, or falls back safely', () => {
+  const fakeVenv = '/opt/custom/bin/python';
+  assert.equal(resolvePythonBinary({ envPython: fakeVenv, exists: (p) => p === fakeVenv }), fakeVenv);
+
+  const localVenv = path.join('/repo', 'workers/.venv/bin/python');
+  assert.equal(resolvePythonBinary({ envPython: '', pkgRoot: '/repo', exists: (p) => p === localVenv }), localVenv);
+
+  assert.equal(resolvePythonBinary({ envPython: '', pkgRoot: '/repo', homedir: '/home/user', exists: () => false }), 'python3');
 });
 
 test('every .env is read, most specific first; the library is found in the host project', () => {

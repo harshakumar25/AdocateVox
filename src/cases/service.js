@@ -19,6 +19,7 @@
 import { CONSTITUTION_ACT } from '../ingest/constitution.js';
 import { toConstitutionLabel } from '../service.js';
 import { CONSTITUTION_BENCH, rankCases } from './rank.js';
+import { isValidIsoDate } from '../common/dates.js';
 
 const HEADNOTE_CHARS = 600;
 const CROSS_REFERENCE_BONUS = 3;
@@ -114,10 +115,7 @@ const CODE_NAMES = Object.freeze({
   BNS: 'Bharatiya Nyaya Sanhita, 2023', BNSS: 'Bharatiya Nagarik Suraksha Sanhita, 2023', BSA: 'Bharatiya Sakshya Adhiniyam, 2023',
   IPC: 'Indian Penal Code, 1860', CrPC: 'Code of Criminal Procedure, 1973', IEA: 'Indian Evidence Act, 1872',
 });
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const validDate = (date) => ISO_DATE.test(date)
-  && Number.isFinite(Date.parse(`${date}T00:00:00Z`))
-  && new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
+const validDate = isValidIsoDate;
 const decidedByDate = (rows, date) => date
   ? rows.filter((row) => row.decided_on && row.decided_on <= date)
   : rows;

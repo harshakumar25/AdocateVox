@@ -1,1 +1,2 @@
 pdfplumber==0.11.4
+pypdfium2>=4.30.0,<=5.14.0

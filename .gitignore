@@ -2,6 +2,10 @@ node_modules/
 .env
 .lawbuddy
 .lawbuddy/
+.advocatevox
+.advocatevox/
+dist/advocatevox/
+dist/lawbuddy/
 workers/.venv/
 workers/__pycache__/
 .dev/

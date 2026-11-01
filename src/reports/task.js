@@ -1,5 +1,6 @@
 import { extractCitations } from '../parse/citationParser.js';
 import { verifyCaseCitation } from '../cases/citationVerify.js';
+import { isValidIsoDate } from '../common/dates.js';
 
 const CASE_WORK = /\b(?:judg(?:e)?ment|case note|case analysis|landmark case|holding|ratio decidendi|facts of (?:the )?case|review of (?:the )?case)\b/i;
 const CAPTION = /([\p{L}][\p{L} .'&-]{1,75}?)\s+(?:v\.?|vs\.?|versus)\s+([\p{L}][\p{L} .'&-]{1,75})/iu;
@@ -29,8 +30,7 @@ const normalize = (s) => String(s).normalize('NFKC').toLowerCase().replace(/[^\p
 export const suppliedIdentityGate = (task, text = '') => {
   const missing = [];
   const header = normalize(text.split(/\s+/).slice(0, 300).join(' '));
-  const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(task.decisionDate) && !Number.isNaN(Date.parse(task.decisionDate))
-    && new Date(task.decisionDate).toISOString().slice(0, 10) === task.decisionDate;
+  const dateValid = isValidIsoDate(task.decisionDate);
   if (!task.caption) missing.push('case caption');
   if (task.queryPartyA && task.partyA && !normalize(task.partyA).includes(normalize(task.queryPartyA))
     && !normalize(task.queryPartyA).includes(normalize(task.partyA))) missing.push('case caption consistent with the research question');

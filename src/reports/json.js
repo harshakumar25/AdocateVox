@@ -23,14 +23,28 @@ export const parseJson = (text) => {
 };
 
 export const validSchema = (value, schema) => {
+  if (!schema || typeof schema !== 'object') return false;
   if (schema.enum && !schema.enum.includes(value)) return false;
+  if (!schema.type) return Boolean(schema.enum);
   if (schema.type === 'string') return typeof value === 'string';
   if (schema.type === 'boolean') return typeof value === 'boolean';
-  if (schema.type === 'number' || schema.type === 'integer') return typeof value === 'number' && Number.isFinite(value) && (schema.type !== 'integer' || Number.isInteger(value));
-  if (schema.type === 'array') return Array.isArray(value) && value.every((item) => validSchema(item, schema.items));
-  if (schema.type === 'object') return value && typeof value === 'object' && !Array.isArray(value)
-    && (schema.required || []).every((key) => Object.hasOwn(value, key))
-    && Object.entries(value).every(([key, item]) => schema.properties[key] ? validSchema(item, schema.properties[key]) : schema.additionalProperties !== false);
+  if (schema.type === 'number' || schema.type === 'integer') {
+    return typeof value === 'number' && Number.isFinite(value) && (schema.type !== 'integer' || Number.isInteger(value));
+  }
+  if (schema.type === 'array') {
+    return Array.isArray(value) && (!schema.items || value.every((item) => validSchema(item, schema.items)));
+  }
+  if (schema.type === 'object') {
+    return Boolean(
+      value && typeof value === 'object' && !Array.isArray(value)
+      && (schema.required || []).every((key) => Object.hasOwn(value, key))
+      && Object.entries(value).every(([key, item]) => (
+        schema.properties && schema.properties[key]
+          ? validSchema(item, schema.properties[key])
+          : schema.additionalProperties !== false
+      )),
+    );
+  }
   return false;
 };
 export const objectSchema = (properties) => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });

@@ -4,6 +4,7 @@
  */
 
 export { config } from './config.js';
+export { assertIsoDate, isValidIsoDate, toIsoDay, todayKolkata, todayUtc } from './common/dates.js';
 export { openLegalStore, toFtsQuery } from './store/db.js';
 export {
   createLawRetriever,

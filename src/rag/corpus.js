@@ -17,13 +17,21 @@ export const chunkPages = (pages, wordsPerChunk = 450) => pages.flatMap((page) =
   }
   return chunks;
 });
-export const openCorpus = (file = CORPUS_PATH) => {
-  if (file !== ':memory:') mkdirSync(path.dirname(file), { recursive: true });
-  const db = new DatabaseSync(file); db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
+const initializedFiles = new Set();
+const initSchemaOnce = (db, file) => {
+  if (file !== ':memory:' && initializedFiles.has(file)) return;
+  db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS rag_document(id TEXT PRIMARY KEY,title TEXT NOT NULL,topics TEXT NOT NULL,type TEXT NOT NULL,url TEXT,sha256 TEXT,checked_at TEXT,status TEXT NOT NULL,error TEXT,note TEXT);
     CREATE TABLE IF NOT EXISTS rag_chunk(id INTEGER PRIMARY KEY,document_id TEXT NOT NULL,page INTEGER,start_offset INTEGER,end_offset INTEGER,text TEXT NOT NULL);
     CREATE VIRTUAL TABLE IF NOT EXISTS rag_fts USING fts5(title,text,tokenize='unicode61');
     CREATE INDEX IF NOT EXISTS rag_document_chunks ON rag_chunk(document_id);`);
+  if (file !== ':memory:') initializedFiles.add(file);
+};
+
+export const openCorpus = (file = CORPUS_PATH) => {
+  if (file !== ':memory:') mkdirSync(path.dirname(file), { recursive: true });
+  const db = new DatabaseSync(file);
+  initSchemaOnce(db, file);
   const upsert = db.prepare(`INSERT INTO rag_document VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,topics=excluded.topics,type=excluded.type,url=excluded.url,sha256=excluded.sha256,checked_at=excluded.checked_at,status=excluded.status,error=excluded.error,note=excluded.note`);
   const remove = (id) => {
     db.prepare('DELETE FROM rag_fts WHERE rowid IN (SELECT id FROM rag_chunk WHERE document_id=?)').run(id);

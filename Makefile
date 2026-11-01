@@ -1,4 +1,4 @@
-.PHONY: test lint build dev start all
+.PHONY: test lint build dev start serve all
 
 all: lint test build
 
@@ -15,5 +15,9 @@ dev:
 	npm run dev
 
 start:
-	npm start
+	node src/server.js
+
+serve:
+	node src/server.js
+
 

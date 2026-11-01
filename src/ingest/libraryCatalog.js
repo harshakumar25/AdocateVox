@@ -4,6 +4,7 @@
  * to several practice topics; the library never duplicates its provisions by topic.
  */
 import { isCitableOfficialSource } from '../sources/registry.js';
+import { isValidIsoDate, todayUtc } from '../common/dates.js';
 
 const INDIA_CODE = 'https://www.indiacode.nic.in';
 const code = (handle) => `${INDIA_CODE}/indiacode/handle/123456789/${handle}?view_type=browse`;
@@ -108,10 +109,9 @@ const TOPIC_ALIASES = Object.freeze({
 const searchable = PRACTICE_ACTS.map((entry) => ({ entry, keys: [entry.id, entry.title, ...entry.aliases].map(normal) }));
 
 /** A metadata-only index: no empty Act is inserted into the operative-law store. */
-export const cataloguedActs = (store, { query = '', topic = '', includeForeign = false, asOf = new Date().toISOString().slice(0, 10) } = {}) => {
+export const cataloguedActs = (store, { query = '', topic = '', includeForeign = false, asOf = todayUtc() } = {}) => {
   if (topic && !PRACTICE_TOPICS[topic]) throw new RangeError(`Unknown practice topic: ${topic}`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf) || Number.isNaN(Date.parse(asOf))
-    || new Date(asOf).toISOString().slice(0, 10) !== asOf) throw new RangeError('asOf must be a real YYYY-MM-DD date');
+  if (!isValidIsoDate(asOf)) throw new RangeError('asOf must be a real YYYY-MM-DD date');
   const q = normal(query);
   const words = q.split(' ').filter(Boolean);
   const results = searchable.flatMap(({ entry, keys }) => {

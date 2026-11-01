@@ -20,30 +20,31 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const docvex = path.resolve(root, process.env.DOCVEX_DIR || '../DOCVEX');
 const server = path.join(docvex, 'server', 'server.js');
 if (!fs.existsSync(server)) {
-  console.error(`DocVex's server was not found at ${server}. Set DOCVEX_DIR to the DocVex checkout.`);
-  process.exit(1);
+  console.log(`DocVex server not found at ${server}; launching AdvocateVox in standalone mode.`);
+  const standalone = await import('../src/server.js');
+  standalone.startServer(Number(process.env.PORT) || 3020);
+} else {
+  const dev = path.join(root, '.dev');
+  const link = (target, at) => {
+    fs.mkdirSync(path.dirname(at), { recursive: true });
+    // Replace an earlier link (unlink removes the link itself, never what it points to); anything else is left alone.
+    const existing = fs.lstatSync(at, { throwIfNoEntry: false });
+    if (existing?.isSymbolicLink()) fs.unlinkSync(at);
+    else if (existing) throw new Error(`${at} exists and is not a link; remove it by hand`);
+    fs.symlinkSync(target, at);
+  };
+  link(path.join(docvex, 'server'), path.join(dev, 'server'));
+  link(root, path.join(dev, 'node_modules', '@docvex', 'lawbuddy'));
+  link(root, path.join(dev, 'node_modules', '@docvex', 'advocatevox'));
+
+  // DocVex reads its .env (GROQ_API_KEY, providers) from its own folder: run from there.
+  const child = spawn(process.execPath, [
+    '--preserve-symlinks', '--preserve-symlinks-main', '--disable-warning=ExperimentalWarning', path.join(dev, 'server', 'server.js'),
+  ], {
+    cwd: docvex,
+    stdio: 'inherit',
+    env: { CHATTERBOX_ENABLED: 'false', PORT: '3020', ...process.env },
+  });
+  child.on('exit', (code) => process.exit(code ?? 0));
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
 }
-
-const dev = path.join(root, '.dev');
-const link = (target, at) => {
-  fs.mkdirSync(path.dirname(at), { recursive: true });
-  // Replace an earlier link (unlink removes the link itself, never what it points to); anything else is left alone.
-  const existing = fs.lstatSync(at, { throwIfNoEntry: false });
-  if (existing?.isSymbolicLink()) fs.unlinkSync(at);
-  else if (existing) throw new Error(`${at} exists and is not a link; remove it by hand`);
-  fs.symlinkSync(target, at);
-};
-link(path.join(docvex, 'server'), path.join(dev, 'server'));
-link(root, path.join(dev, 'node_modules', '@docvex', 'lawbuddy'));
-link(root, path.join(dev, 'node_modules', '@docvex', 'advocatevox'));
-
-// DocVex reads its .env (GROQ_API_KEY, providers) from its own folder: run from there.
-const child = spawn(process.execPath, [
-  '--preserve-symlinks', '--preserve-symlinks-main', '--disable-warning=ExperimentalWarning', path.join(dev, 'server', 'server.js'),
-], {
-  cwd: docvex,
-  stdio: 'inherit',
-  env: { CHATTERBOX_ENABLED: 'false', PORT: '3020', ...process.env },
-});
-child.on('exit', (code) => process.exit(code ?? 0));
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
