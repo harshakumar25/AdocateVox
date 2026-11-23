@@ -8,7 +8,7 @@
  * the code being worked on. DocVex's own node_modules are never touched.
  *
  *   DOCVEX_DIR  the DocVex checkout (default ../DOCVEX)
- *   PORT        the port (default 3020)
+ *   PORT        the port (default 3000)
  */
 
 import fs from 'node:fs';
@@ -18,11 +18,12 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const docvex = path.resolve(root, process.env.DOCVEX_DIR || '../DOCVEX');
+const port = process.env.PORT || '3000';
 const server = path.join(docvex, 'server', 'server.js');
 if (!fs.existsSync(server)) {
   console.log(`DocVex server not found at ${server}; launching AdvocateVox in standalone mode.`);
   const standalone = await import('../src/server.js');
-  standalone.startServer(Number(process.env.PORT) || 3020);
+  standalone.startServer(Number(port));
 } else {
   const dev = path.join(root, '.dev');
   const link = (target, at) => {
@@ -43,7 +44,7 @@ if (!fs.existsSync(server)) {
   ], {
     cwd: docvex,
     stdio: 'inherit',
-    env: { CHATTERBOX_ENABLED: 'false', PORT: '3020', ...process.env },
+    env: { CHATTERBOX_ENABLED: 'false', PORT: port, ...process.env },
   });
   child.on('exit', (code) => process.exit(code ?? 0));
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));

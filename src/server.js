@@ -70,8 +70,17 @@ export const createServer = ({
   return { server, legalLibrary };
 };
 
-export const startServer = (port = Number(process.env.PORT) || 3020) => {
+export const startServer = (port = Number(process.env.PORT) || 3000) => {
   const { server, legalLibrary } = createServer();
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ Error: Port ${port} is already in use.`);
+      console.error(`To free port ${port}, run:\n  lsof -ti:${port} | xargs kill -9\n`);
+      process.exit(1);
+    } else {
+      throw err;
+    }
+  });
   server.listen(port, () => {
     console.log(`AdvocateVox server running at http://127.0.0.1:${port}/advocatevox`);
   });
@@ -91,4 +100,3 @@ export const startServer = (port = Number(process.env.PORT) || 3020) => {
 if (process.argv[1] && process.argv[1].endsWith('server.js')) {
   startServer();
 }
-

@@ -181,7 +181,7 @@ flowchart LR
  |   ACT:         Bharatiya Nyaya Sanhita, 2023 (Act 45 of 2023)           | |
  |   PROVISION:   Section 103(1) - Punishment for murder                   | |
  |   AS-OF:       2024-07-01 (Commencement: 2024-07-01)                    | |
- |   SHA-256:     e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991 | |
+ |   SHA-256:     e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991  | |
  |   CROSSWALK:   IPC Section 302 -> BNS Section 103(1)                    | |
  |   STATUS:      VERIFIED (Primary Gazette: egazette.gov.in)              | |
  +-------------------------------------------------------------------------+ |
@@ -244,8 +244,8 @@ Built exclusively on Node.js built-ins. Zero external runtime npm dependencies.
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/harshakumar25/AdocateDocs.git
-cd AdocateDocs
+git clone https://github.com/harshakumar25/AdocateVox.git
+cd AdocateVox
 
 # 2. Configure environment
 cp .env.example .env
