@@ -35,6 +35,8 @@ if (!fs.existsSync(server)) {
     fs.symlinkSync(target, at);
   };
   link(path.join(docvex, 'server'), path.join(dev, 'server'));
+  // DOCVEX server imports from ../../extension/ (two levels up from server/); make it resolve under .dev/
+  link(path.join(docvex, 'extension'), path.join(dev, 'extension'));
   link(root, path.join(dev, 'node_modules', '@docvex', 'lawbuddy'));
   link(root, path.join(dev, 'node_modules', '@docvex', 'advocatevox'));
 
