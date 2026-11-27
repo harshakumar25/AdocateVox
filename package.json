@@ -7,6 +7,8 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "cli": "node --disable-warning=ExperimentalWarning src/cli.js",
+    "legal": "node --disable-warning=ExperimentalWarning src/cli.js",
+    "seed:legal": "node scripts/seed-legal.mjs",
     "lint": "find src web -name '*.js' -type f -print0 | xargs -0 -n 1 node --check",
     "dev": "node scripts/dev.mjs",
     "start": "node src/server.js",

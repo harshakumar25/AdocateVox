@@ -258,7 +258,10 @@ workers/.venv/bin/pip install -r workers/requirements.txt
 npm install
 npm test
 
-# 5. Start development server
+# 5. Seed and index official legal corpus (Constitution 2026, BNS, BNSS, BSA, IPC/CrPC/IEA)
+npm run seed:legal
+
+# 6. Start development server
 npm run dev
 ```
 
