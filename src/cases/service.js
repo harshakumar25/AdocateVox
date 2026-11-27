@@ -57,15 +57,18 @@ const citingCase = (row) => ({
 });
 
 /** What later judgments in the full-text index say about one judgment. */
-const citationsOf = (store, caseId) => {
+export const citationsOf = (store, caseId, targetBenchStrength = null) => {
   const citing = store.citedBy(caseId);
+  const benchStrength = targetBenchStrength !== null && targetBenchStrength !== undefined
+    ? targetBenchStrength
+    : (store.getCase(caseId)?.bench_strength ?? 0);
   const treatments = citing.filter((row) => NEGATIVE.has(row.category)).map((row) => ({
     ...citingCase(row),
     treatment: TREATMENT_WORDS[row.category],
     printed: row.treatment,
     page: row.ref_page,
     // A smaller bench cannot overrule a larger one: such a label is shown, but sets no status.
-    binding: !row.bench_strength || row.bench_strength >= (store.getCase(caseId)?.bench_strength ?? 0),
+    binding: !row.bench_strength || row.bench_strength >= benchStrength,
   }));
   const contexts = citing.filter((row) => row.context).slice(0, CITING_CONTEXTS).map((row) => ({
     ...citingCase(row),
@@ -76,10 +79,14 @@ const citationsOf = (store, caseId) => {
   return { count: citing.length, treatments, contexts };
 };
 
-const toCard = (store, { row, points, breakdown, via = null }) => {
+export const toCard = (store, { row, points, breakdown, via = null }, cardCache = null) => {
+  if (cardCache && cardCache.has(row.id)) {
+    const cached = cardCache.get(row.id);
+    return { ...cached, points, breakdown, via: via ?? cached.via };
+  }
   const brief = store.getCaseBrief(row.id);
   const reviews = store.verifiedReviewsFor(row.id);
-  return {
+  const card = {
     id: row.id,
     title: row.title,
     decidedOn: row.decided_on,
@@ -98,12 +105,14 @@ const toCard = (store, { row, points, breakdown, via = null }) => {
     via,
     status: row.status,
     mentions: row.mentions ?? null,
-    citedBy: citationsOf(store, row.id),
+    citedBy: citationsOf(store, row.id, row.bench_strength),
     brief: brief
       ? { ...brief.brief, model: brief.model, generatedAt: brief.generated_at, kept: brief.kept, dropped: brief.dropped }
       : null,
     reviews: { count: reviews.reviews, average: reviews.average, items: reviews.items },
   };
+  if (cardCache) cardCache.set(row.id, card);
+  return card;
 };
 
 const byDateDescending = (a, b) => String(b.row.decided_on || '').localeCompare(String(a.row.decided_on || ''));
@@ -156,13 +165,15 @@ const casesForSection = (store, { act, label, limit, decidedBy }) => {
   }
   const ranked = [...best.values()].sort((a, b) => b.points - a.points
     || String(a.row.decided_on || '9999').localeCompare(String(b.row.decided_on || '9999')) || a.row.id - b.row.id);
+  const cardCache = new Map();
+  const getCard = (item) => toCard(store, item, cardCache);
   return {
     ...base,
     relation: ranked.some((item) => !item.via) ? 'direct' : ranked.length ? 'predecessor' : 'none',
     total: ranked.length,
     predecessors,
-    cases: ranked.slice(0, limit).map((item) => ({ ...toCard(store, item), viaNote: item.viaNote })),
-    latest: [...ranked].sort(byDateDescending).slice(0, LATEST).map((item) => ({ ...toCard(store, item), viaNote: item.viaNote })),
+    cases: ranked.slice(0, limit).map((item) => ({ ...getCard(item), viaNote: item.viaNote })),
+    latest: [...ranked].sort(byDateDescending).slice(0, LATEST).map((item) => ({ ...getCard(item), viaNote: item.viaNote })),
   };
 };
 
@@ -196,23 +207,27 @@ export const casesForProvision = (store, { provision, limit = 6, decidedBy = nul
 
   const direct = rankCases(decidedByDate(store.casesForProvision({ label }), decidedBy), label);
   if (direct.length) {
+    const directCardCache = new Map();
+    const getDirectCard = (ranked) => toCard(store, ranked, directCardCache);
     return {
       ...base,
       relation: 'direct',
       total: direct.length,
-      cases: direct.slice(0, limit).map((ranked) => toCard(store, ranked)),
-      latest: [...direct].sort(byDateDescending).slice(0, LATEST).map((ranked) => toCard(store, ranked)),
+      cases: direct.slice(0, limit).map((ranked) => getDirectCard(ranked)),
+      latest: [...direct].sort(byDateDescending).slice(0, LATEST).map((ranked) => getDirectCard(ranked)),
     };
   }
 
   const discussed = rankCases(decidedByDate(store.casesMentioning({ label, minMentions: MIN_TEXT_MENTIONS }), decidedBy), label);
   if (discussed.length) {
+    const discussedCardCache = new Map();
+    const getDiscussedCard = (ranked) => toCard(store, ranked, discussedCardCache);
     return {
       ...base,
       relation: 'text',
       total: discussed.length,
-      cases: discussed.slice(0, limit).map((ranked) => toCard(store, ranked)),
-      latest: [...discussed].sort(byDateDescending).slice(0, LATEST).map((ranked) => toCard(store, ranked)),
+      cases: discussed.slice(0, limit).map((ranked) => getDiscussedCard(ranked)),
+      latest: [...discussed].sort(byDateDescending).slice(0, LATEST).map((ranked) => getDiscussedCard(ranked)),
     };
   }
 
@@ -244,12 +259,13 @@ export const casesForProvision = (store, { provision, limit = 6, decidedBy = nul
   }
   const relatedCases = [...best.values()]
     .sort((a, b) => b.relatedness - a.relatedness || b.points - a.points || a.row.id - b.row.id);
+  const relatedCardCache = new Map();
   return {
     ...base,
     relation: relatedCases.length ? 'related' : 'none',
     total: 0,
     relatedLabels,
-    cases: relatedCases.slice(0, limit).map((ranked) => toCard(store, ranked)),
+    cases: relatedCases.slice(0, limit).map((ranked) => toCard(store, ranked, relatedCardCache)),
     latest: [],
   };
 };

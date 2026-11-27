@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { config } from '../config.js';
+
 export const CORPUS_PATH = path.join(path.dirname(config.LEGAL_DB_PATH), 'practice-rag.db');
 export const digest = (text) => createHash('sha256').update(text).digest('hex');
 
@@ -17,6 +18,7 @@ export const chunkPages = (pages, wordsPerChunk = 450) => pages.flatMap((page) =
   }
   return chunks;
 });
+
 const initializedFiles = new Set();
 const initSchemaOnce = (db, file) => {
   if (file !== ':memory:' && initializedFiles.has(file)) return;
@@ -32,39 +34,95 @@ export const openCorpus = (file = CORPUS_PATH) => {
   if (file !== ':memory:') mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   initSchemaOnce(db, file);
-  const upsert = db.prepare(`INSERT INTO rag_document VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,topics=excluded.topics,type=excluded.type,url=excluded.url,sha256=excluded.sha256,checked_at=excluded.checked_at,status=excluded.status,error=excluded.error,note=excluded.note`);
-  const remove = (id) => {
-    db.prepare('DELETE FROM rag_fts WHERE rowid IN (SELECT id FROM rag_chunk WHERE document_id=?)').run(id);
-    db.prepare('DELETE FROM rag_chunk WHERE document_id=?').run(id);
+
+  const statements = {
+    upsert: db.prepare(`INSERT INTO rag_document VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,topics=excluded.topics,type=excluded.type,url=excluded.url,sha256=excluded.sha256,checked_at=excluded.checked_at,status=excluded.status,error=excluded.error,note=excluded.note`),
+    deleteFts: db.prepare('DELETE FROM rag_fts WHERE rowid IN (SELECT id FROM rag_chunk WHERE document_id=?)'),
+    deleteChunks: db.prepare('DELETE FROM rag_chunk WHERE document_id=?'),
+    insertChunk: db.prepare('INSERT INTO rag_chunk(document_id,page,start_offset,end_offset,text) VALUES(?,?,?,?,?)'),
+    insertFts: db.prepare('INSERT INTO rag_fts(rowid,title,text) VALUES(?,?,?)'),
+    searchChunks: db.prepare(`SELECT c.*,d.title,d.url,d.sha256,d.type,d.note,d.status,d.checked_at,bm25(rag_fts,2,1) AS rank
+      FROM rag_fts JOIN rag_chunk c ON c.id=rag_fts.rowid JOIN rag_document d ON d.id=c.document_id
+      WHERE rag_fts MATCH ? AND (?='' OR d.id=?) AND (?='' OR EXISTS(SELECT 1 FROM json_each(d.topics) WHERE value=?))
+      ORDER BY rank,c.id LIMIT ?`),
+    adjacentContext: db.prepare('SELECT page,start_offset,end_offset,text FROM rag_chunk WHERE document_id=? AND id IN (?,?) ORDER BY id'),
+    getDoc: db.prepare('SELECT * FROM rag_document WHERE id=?'),
+    coverage: db.prepare('SELECT d.*,COUNT(c.id) AS chunks FROM rag_document d LEFT JOIN rag_chunk c ON c.document_id=d.id GROUP BY d.id ORDER BY d.title'),
   };
+
+  const remove = (id) => {
+    statements.deleteFts.run(id);
+    statements.deleteChunks.run(id);
+  };
+
   const replace = (entry, source, pages, error = null) => {
     const chunks = pages ? chunkPages(pages) : [];
     db.exec('BEGIN IMMEDIATE');
     try {
       remove(entry.id);
-      upsert.run(entry.id,entry.title,JSON.stringify(entry.topics),entry.instrumentType,source?.url || entry.sourceUrl,source?.sha256 || null,new Date().toISOString(),chunks.length ? 'retrieved-text-unreviewed' : 'unavailable',error,entry.note || null);
+      statements.upsert.run(entry.id,entry.title,JSON.stringify(entry.topics),entry.instrumentType,source?.url || entry.sourceUrl,source?.sha256 || null,new Date().toISOString(),chunks.length ? 'retrieved-text-unreviewed' : 'unavailable',error,entry.note || null);
       for (const chunk of chunks) {
-        const result = db.prepare('INSERT INTO rag_chunk(document_id,page,start_offset,end_offset,text) VALUES(?,?,?,?,?)').run(entry.id,chunk.page,chunk.start,chunk.end,chunk.text);
-        db.prepare('INSERT INTO rag_fts(rowid,title,text) VALUES(?,?,?)').run(result.lastInsertRowid,entry.title,chunk.text);
+        const result = statements.insertChunk.run(entry.id,chunk.page,chunk.start,chunk.end,chunk.text);
+        statements.insertFts.run(result.lastInsertRowid,entry.title,chunk.text);
       }
       db.exec('COMMIT');
       return chunks.length;
     } catch (error) { db.exec('ROLLBACK'); throw error; }
   };
+
   const search = (query, { topic = '', instrument = '', limit = 8 } = {}) => {
     const stop = new Set(['the','and','for','with','from','what','which','how','does','under','explain','report','please']);
     const tokens = [...new Set((String(query).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || []).filter(t => !stop.has(t)))].slice(0, 24);
     if (!tokens.length) return [];
     const match = tokens.map((t) => `"${t}"`).join(' OR ');
-    return db.prepare(`SELECT c.*,d.title,d.url,d.sha256,d.type,d.note,d.status,d.checked_at,bm25(rag_fts,2,1) AS rank
-      FROM rag_fts JOIN rag_chunk c ON c.id=rag_fts.rowid JOIN rag_document d ON d.id=c.document_id
-      WHERE rag_fts MATCH ? AND (?='' OR d.id=?) AND (?='' OR EXISTS(SELECT 1 FROM json_each(d.topics) WHERE value=?))
-      ORDER BY rank,c.id LIMIT ?`).all(match,instrument,instrument,topic,topic,Math.max(1,Math.min(120,(Number(limit)||8)*5)))
+    return statements.searchChunks.all(match,instrument,instrument,topic,topic,Math.max(1,Math.min(120,(Number(limit)||8)*5)))
       .map((r) => ({ ...r, contentsPage: /arrangement of (?:sections|rules)|(?:^|\n)\s*SECTIONS\s*(?:\n|$)/i.test(r.text), citation: `${r.document_id}, PDF page ${r.page}, offsets ${r.start_offset}-${r.end_offset}`, legalCurrency: 'Unreviewed source snapshot; not verified law in force.' }))
       .sort((a,b) => (a.contentsPage ? a.rank * .15 : a.rank) - (b.contentsPage ? b.rank * .15 : b.rank))
       .slice(0,Math.max(1,Math.min(30,Number(limit)||8)))
-      .map((r) => ({...r, adjacentContext: db.prepare('SELECT page,start_offset,end_offset,text FROM rag_chunk WHERE document_id=? AND id IN (?,?) ORDER BY id').all(r.document_id,r.id-1,r.id+1)}));
+      .map((r) => ({...r, adjacentContext: statements.adjacentContext.all(r.document_id,r.id-1,r.id+1)}));
   };
-  return { replace, search, get: (id) => db.prepare('SELECT * FROM rag_document WHERE id=?').get(id),
-    coverage: () => db.prepare('SELECT d.*,COUNT(c.id) AS chunks FROM rag_document d LEFT JOIN rag_chunk c ON c.document_id=d.id GROUP BY d.id ORDER BY d.title').all(), close: () => db.close() };
+
+  return {
+    replace,
+    search,
+    get: (id) => statements.getDoc.get(id),
+    coverage: () => statements.coverage.all(),
+    close: () => db.close(),
+  };
 };
+
+/**
+ * Closure-scoped persistent corpus loader ensuring test isolation and clean lifecycle.
+ * @param {string|{ corpus?: object, corpusPath?: string, file?: string }} [options]
+ * @returns {{ getCorpus: () => object, get: () => object, close: () => void }}
+ */
+export const createCorpusLoader = (options = {}) => {
+  const corpusPath = typeof options === 'string'
+    ? options
+    : (options?.corpusPath || options?.file || CORPUS_PATH);
+  const initialCorpus = typeof options === 'object' && options?.corpus ? options.corpus : null;
+  let corpusInstance = initialCorpus;
+
+  const getCorpus = () => {
+    if (!corpusInstance) {
+      corpusInstance = openCorpus(corpusPath);
+    }
+    return corpusInstance;
+  };
+
+  const close = () => {
+    if (initialCorpus) return;
+    if (corpusInstance) {
+      try { corpusInstance.close(); } catch {}
+      corpusInstance = null;
+    }
+  };
+
+  return {
+    getCorpus,
+    get: getCorpus,
+    close,
+  };
+};
+
+export const getCorpusLoader = (file = CORPUS_PATH) => createCorpusLoader(file);

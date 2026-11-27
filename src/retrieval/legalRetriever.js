@@ -14,6 +14,7 @@
 
 import fs from 'node:fs';
 import { config } from '../config.js';
+import { SovereignLruCache } from '../store/cache.js';
 import { CENTRAL_ACTS, actRecord } from '../ingest/act.js';
 import { PRACTICE_ACTS } from '../ingest/libraryCatalog.js';
 import { isCitableOfficialSource } from '../sources/registry.js';
@@ -58,12 +59,21 @@ const catalogueReferences = PRACTICE_ACTS
 
 export const LEGAL_EVIDENCE_KINDS = Object.freeze(['statute', 'statute-absence', 'correspondence']);
 
+const legalReferencesCache = new SovereignLruCache(1000, 300000);
+
 /**
  * @returns {{ constitution: string[], sections: Array<{act: string, label: string}> }}
  *   constitution labels like "Art.21", "Preamble", "Sch.7"; sections like {act: 'IPC', label: 's.302'}.
  */
 export const detectLegalReferences = (text) => {
   const value = String(text || '');
+  const cached = legalReferencesCache.get(value);
+  if (cached) {
+    return {
+      constitution: [...cached.constitution],
+      sections: cached.sections.map((s) => ({ ...s })),
+    };
+  }
   const constitution = [];
   const sections = [];
   const addArticle = (label) => !constitution.includes(label) && constitution.push(label);
@@ -112,7 +122,12 @@ export const detectLegalReferences = (text) => {
     for (const [, n, sub] of value.matchAll(before)) addSection(entry.id, n, sub, entry.instrumentType === 'rules' ? 'r.' : 's.');
   }
 
-  return { constitution, sections };
+  const result = { constitution, sections };
+  legalReferencesCache.set(value, result);
+  return {
+    constitution: [...constitution],
+    sections: sections.map((s) => ({ ...s })),
+  };
 };
 
 const humanLabel = (label) => {
@@ -461,13 +476,34 @@ const searchEvidence = (store, question, asOf, limit) => {
   return hits
     .filter((hit) => hit.score <= best * RELATIVE_SCORE_CUTOFF)
     .filter((hit) => {
-      const { matched, total } = store.termCoverage(hit.version_id, question);
+      const { matched, total } = store.termCoverage(hit, question);
       return total > 0 && matched / total >= MIN_TERM_COVERAGE;
     })
     .map((hit) => {
       const code = CODE_BY_TITLE.get(hit.short_title);
-      const actId = code ? actIdFor(store, code) : null;
-      const version = actId ? store.getProvisionAsOf({ actId, label: hit.label, date: asOf }) : null;
+      if (!code) return null;
+      let version;
+      if (hit.version_text !== undefined) {
+        version = {
+          id: hit.version_id,
+          label: hit.label,
+          heading: hit.heading,
+          text: hit.version_text,
+          valid_from: hit.valid_from,
+          valid_to: hit.valid_to,
+          source_url: hit.source_url,
+          source_sha256: hit.source_sha256,
+          gazette_ref: hit.gazette_ref,
+          amended_by_ref: hit.amended_by_ref,
+          footnotes: hit.footnotes,
+          verified_through: hit.verified_through,
+          act_id: hit.act_id,
+          context: hit.context,
+        };
+      } else {
+        const actId = code ? actIdFor(store, code) : null;
+        version = actId ? store.getProvisionAsOf({ actId, label: hit.label, date: asOf }) : null;
+      }
       return version ? { code, version } : null;
     })
     .filter(Boolean)

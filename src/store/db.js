@@ -12,6 +12,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { config } from '../config.js';
 import { MIGRATIONS } from './migrations.js';
+import { SovereignLruCache } from './cache.js';
 import { JUDGMENT_READER_VERSION, TREATMENT_RANK } from '../parse/judgmentCitations.js';
 import { findSourceForUrl, isCitableOfficialSource } from '../sources/registry.js';
 import { assertIsoDate } from '../common/dates.js';
@@ -49,6 +50,25 @@ export const toFtsQuery = (text, mode = 'all') => {
   return terms.map((term) => `"${term}"`).join(' ');
 };
 
+/**
+ * Extracts a normalized, stemmed token set from statutory provision text.
+ * Reuses questionTerms to preserve statutory numerals and Hindi question words.
+ */
+export const provisionTokens = (text) => {
+  const rawWords = String(text || '').match(/[\p{L}\p{N}][\p{L}\p{M}\p{N}]*/gu) || [];
+  const meaningful = questionTerms(text);
+  const set = new Set();
+  for (const word of [...meaningful, ...rawWords]) {
+    const lower = word.toLowerCase();
+    set.add(lower);
+    const stemmed = lower.replace(/(?:ing|edly|ed|tion|ness|ment|es|s)$/, '');
+    if (stemmed.length >= 3) {
+      set.add(stemmed);
+    }
+  }
+  return set;
+};
+
 export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
   if (filePath !== ':memory:') {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -80,6 +100,11 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       db.exec(`PRAGMA user_version = ${index + 1}`);
     });
   }
+
+  // In-memory caches for hot immutable provisions, acts, and tokenized version text
+  const provisionCache = new SovereignLruCache(1000, 3600000);
+  const actCache = new SovereignLruCache(500, 3600000);
+  const versionTokensCache = new SovereignLruCache(1000, 3600000);
 
   const statements = {
     upsertSource: db.prepare(`
@@ -177,7 +202,9 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     // Ranking weights: label 2x, heading 5x, body 1x — a provision titled "Right to education."
     // should outrank one that merely mentions education.
     searchAsOf: db.prepare(`
-      SELECT pv.id AS version_id, p.label, p.heading, a.short_title, pv.valid_from, pv.source_url, pv.source_sha256,
+      SELECT pv.id AS version_id, p.label, p.heading, a.short_title, a.id AS act_id, p.context,
+             pv.valid_from, pv.valid_to, pv.source_url, pv.source_sha256, pv.gazette_ref, pv.amended_by_ref,
+             pv.footnotes, pv.verified_through, pv.text AS version_text,
              snippet(provision_fts, 2, '[', ']', ' … ', 12) AS snippet,
              bm25(provision_fts, 2.0, 5.0, 1.0) AS score
       FROM provision_fts
@@ -189,7 +216,9 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       ORDER BY score LIMIT ?
     `),
     searchVerifiedAsOf: db.prepare(`
-      SELECT pv.id AS version_id, p.label, p.heading, a.short_title, pv.valid_from, pv.source_url, pv.source_sha256,
+      SELECT pv.id AS version_id, p.label, p.heading, a.short_title, a.id AS act_id, p.context,
+             pv.valid_from, pv.valid_to, pv.source_url, pv.source_sha256, pv.gazette_ref, pv.amended_by_ref,
+             pv.footnotes, pv.verified_through, pv.text AS version_text,
              snippet(provision_fts, 2, '[', ']', ' … ', 12) AS snippet,
              bm25(provision_fts, 2.0, 5.0, 1.0) AS score
       FROM provision_fts
@@ -202,7 +231,9 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       ORDER BY score LIMIT ?
     `),
     searchActAsOf: db.prepare(`
-      SELECT pv.id AS version_id, p.label, p.heading, a.short_title, pv.valid_from, pv.source_url, pv.source_sha256,
+      SELECT pv.id AS version_id, p.label, p.heading, a.short_title, a.id AS act_id, p.context,
+             pv.valid_from, pv.valid_to, pv.source_url, pv.source_sha256, pv.gazette_ref, pv.amended_by_ref,
+             pv.footnotes, pv.verified_through, pv.text AS version_text,
              snippet(provision_fts, 2, '[', ']', ' … ', 12) AS snippet,
              bm25(provision_fts, 2.0, 5.0, 1.0) AS score
       FROM provision_fts
@@ -214,7 +245,9 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
       ORDER BY score LIMIT ?
     `),
     searchVerifiedActAsOf: db.prepare(`
-      SELECT pv.id AS version_id, p.label, p.heading, a.short_title, pv.valid_from, pv.source_url, pv.source_sha256,
+      SELECT pv.id AS version_id, p.label, p.heading, a.short_title, a.id AS act_id, p.context,
+             pv.valid_from, pv.valid_to, pv.source_url, pv.source_sha256, pv.gazette_ref, pv.amended_by_ref,
+             pv.footnotes, pv.verified_through, pv.text AS version_text,
              snippet(provision_fts, 2, '[', ']', ' … ', 12) AS snippet,
              bm25(provision_fts, 2.0, 5.0, 1.0) AS score
       FROM provision_fts
@@ -225,6 +258,11 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
         AND (pv.verified_through IS NULL OR pv.verified_through >= ?)
         AND is_citable_official_source(pv.source_url, pv.source_sha256) = 1
       ORDER BY score LIMIT ?
+    `),
+    provisionContentForVersion: db.prepare(`
+      SELECT p.label, p.heading, pv.text
+      FROM provision_version pv JOIN provision p ON p.id = pv.provision_id
+      WHERE pv.id = ?
     `),
     insertCase: db.prepare(`
       INSERT INTO court_case (court, title, decided_on, bench_strength) VALUES (?, ?, ?, ?)
@@ -529,11 +567,20 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
   /** Latest stored copy of `url`, however it arrived (fetched or manually imported). */
   const latestDocument = (url) => statements.latestDocument.get(url) || null;
 
-  const upsertAct = ({ shortTitle, actNumber = null, year = null, ministry = null }) =>
-    statements.upsertAct.get(shortTitle, actNumber, year, ministry).id;
+  const upsertAct = ({ shortTitle, actNumber = null, year = null, ministry = null }) => {
+    actCache.clear();
+    return statements.upsertAct.get(shortTitle, actNumber, year, ministry).id;
+  };
 
   /** Read-only lookup: the act's id, or null when it has not been ingested. */
-  const findAct = ({ shortTitle, year = null }) => statements.findAct.get(shortTitle, year)?.id ?? null;
+  const findAct = ({ shortTitle, year = null }) => {
+    const cacheKey = `${shortTitle}:${year}`;
+    const cached = actCache.get(cacheKey);
+    if (cached !== null) return cached.value;
+    const result = statements.findAct.get(shortTitle, year)?.id ?? null;
+    actCache.set(cacheKey, { value: result });
+    return result;
+  };
 
   /** The official document the act's most recently stored text came from. */
   const actSource = (actId) => statements.actSource.get(actId) ?? null;
@@ -554,8 +601,11 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     return { reviewedThrough, ...verifiedActCoverageAsOf(actId, reviewedThrough) };
   };
 
-  const upsertProvision = ({ actId, label, heading = null, context = null }) =>
-    statements.upsertProvision.get(actId, label, heading, context === null ? null : JSON.stringify(context)).id;
+  const upsertProvision = ({ actId, label, heading = null, context = null }) => {
+    provisionCache.clear();
+    versionTokensCache.clear();
+    return statements.upsertProvision.get(actId, label, heading, context === null ? null : JSON.stringify(context)).id;
+  };
 
   const indexVersion = (versionId, provisionId, text) => {
     const meta = statements.provisionMeta.get(provisionId);
@@ -584,6 +634,8 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     const footnotesJson = footnotes === null ? null : JSON.stringify(footnotes);
 
     return transaction(() => {
+      provisionCache.clear();
+      versionTokensCache.clear();
       const current = statements.openVersion.get(provisionId);
       if (current) {
         const sameSource = Boolean(sourceSha256) && current.source_sha256 === sourceSha256 && current.valid_from === validFrom;
@@ -622,7 +674,12 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
 
   const getProvisionAsOf = ({ actId, label, date }) => {
     assertIsoDate(date, 'date');
-    return statements.versionAsOf.get(actId, label, date, date, date) || null;
+    const cacheKey = `${actId}:${label}:${date}`;
+    const cached = provisionCache.get(cacheKey);
+    if (cached !== null) return cached.value;
+    const result = statements.versionAsOf.get(actId, label, date, date, date) || null;
+    provisionCache.set(cacheKey, { value: result });
+    return result;
   };
   const lastProvisionReview = ({ actId, label }) => statements.lastProvisionReview.get(actId, label) ?? null;
 
@@ -697,9 +754,58 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
    * How many of a question's meaningful words a stored version contains (stemmed, as in search):
    * a hit that matches only "work" out of "how do kubernetes pods work" is not about the question.
    */
-  const termCoverage = (versionId, text) => {
+  const termCoverage = (versionIdOrObj, text, versionText = '') => {
     const terms = [...new Set(questionTerms(text).map((term) => term.toLowerCase()))];
-    const matched = terms.filter((term) => statements.versionMatches.get(versionId, `"${term}"`)).length;
+    if (!terms.length) return { matched: 0, total: 0 };
+
+    const id = typeof versionIdOrObj === 'object' && versionIdOrObj !== null
+      ? (versionIdOrObj.version_id ?? versionIdOrObj.id)
+      : versionIdOrObj;
+
+    let tokens = id !== null && id !== undefined ? versionTokensCache.get(id) : null;
+    if (!tokens) {
+      let label = typeof versionIdOrObj === 'object' && versionIdOrObj !== null ? versionIdOrObj.label : undefined;
+      let heading = typeof versionIdOrObj === 'object' && versionIdOrObj !== null ? versionIdOrObj.heading : undefined;
+      let vText = (typeof versionText === 'string' && versionText)
+        ? versionText
+        : (typeof versionIdOrObj === 'object' && versionIdOrObj !== null ? (versionIdOrObj.version_text || versionIdOrObj.text || '') : '');
+
+      const needsLookup = (
+        typeof versionIdOrObj === 'number' ||
+        label === undefined ||
+        heading === undefined ||
+        (!label && !heading) ||
+        !vText
+      ) && id !== null && id !== undefined;
+
+      if (needsLookup) {
+        const row = statements.provisionContentForVersion.get(id);
+        if (row) {
+          if (!label) label = row.label || '';
+          if (!heading) heading = row.heading || '';
+          if (!vText) vText = row.text || '';
+        }
+      }
+
+      const content = `${label || ''} ${heading || ''} ${vText || ''}`.trim();
+      if (content) {
+        tokens = provisionTokens(content);
+        if (id !== null && id !== undefined) versionTokensCache.set(id, tokens);
+      }
+    }
+
+    if (!tokens) {
+      const matched = terms.filter((term) => statements.versionMatches.get(id, `"${term}"`)).length;
+      return { matched, total: terms.length };
+    }
+
+    let matched = 0;
+    for (const term of terms) {
+      const stemmed = term.replace(/(?:ing|edly|ed|tion|ness|ment|es|s)$/, '');
+      if (tokens.has(term) || (stemmed.length >= 3 && tokens.has(stemmed))) {
+        matched += 1;
+      }
+    }
     return { matched, total: terms.length };
   };
 
@@ -1076,6 +1182,11 @@ export const openLegalStore = (filePath = config.LEGAL_DB_PATH) => {
     markChangeEventProcessed,
     nextWatchDueAt,
     watchSummary,
-    close: () => db.close(),
+    close: () => {
+      provisionCache.clear();
+      actCache.clear();
+      versionTokensCache.clear();
+      db.close();
+    },
   };
 };

@@ -72,10 +72,44 @@ const voice = {
   speechRequest: null,
   speechResolve: null,
   clipResolve: null,
+  activeUrls: new Set(),
+  activeControllers: new Set(),
+  prefetchQueue: new Map(),
+
+  createTrackedUrl(blob) {
+    const url = URL.createObjectURL(blob);
+    this.activeUrls.add(url);
+    return url;
+  },
+
+  revokeTrackedUrl(url) {
+    if (url && this.activeUrls.has(url)) {
+      this.activeUrls.delete(url);
+      try { URL.revokeObjectURL(url); } catch {}
+    }
+  },
 
   reset() {
-    this.speechRequest?.abort(); this.speechRequest = null;
     this.generation += 1;
+    for (const controller of this.activeControllers) {
+      try { controller.abort(); } catch {}
+    }
+    this.activeControllers.clear();
+    this.speechRequest = null;
+
+    for (const url of this.activeUrls) {
+      try { URL.revokeObjectURL(url); } catch {}
+    }
+    this.activeUrls.clear();
+    this.objectUrl = null;
+
+    for (const promise of this.prefetchQueue.values()) {
+      promise.then((res) => {
+        if (res?.audioUrl) this.revokeTrackedUrl(res.audioUrl);
+      }).catch(() => {});
+    }
+    this.prefetchQueue.clear();
+
     this.queue = [];
     this.playing = false;
     if (this.audio) {
@@ -85,10 +119,12 @@ const voice = {
       this.audio = null;
     }
     this.clipResolve?.(); this.clipResolve = null;
-    if (this.objectUrl) URL.revokeObjectURL(this.objectUrl);
-    this.objectUrl = null;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     this.speechResolve?.(); this.speechResolve = null;
+  },
+
+  stop() {
+    this.reset();
   },
 
   enqueue(item) {
@@ -125,7 +161,7 @@ const voice = {
     if (!response.ok) throw new Error(`Audio unavailable (${response.status})`);
     const blob = await response.blob();
     if (generation !== this.generation) return;
-    this.objectUrl = URL.createObjectURL(blob);
+    this.objectUrl = this.createTrackedUrl(blob);
     this.audio = new Audio(this.objectUrl);
     this.audio.playbackRate = normaliseSpeechRate(speechRate.value);
     await new Promise((resolve, reject) => {
@@ -136,53 +172,152 @@ const voice = {
     });
     if (generation !== this.generation) return;
     this.clipResolve = null;
-    URL.revokeObjectURL(this.objectUrl);
+    this.revokeTrackedUrl(this.objectUrl);
     this.objectUrl = null;
     this.audio = null;
+  },
+
+  segmentTextIntoSentences(text) {
+    const raw = String(text || '').trim();
+    if (!raw) return [];
+    const sentences = splitSentences(raw);
+    const result = [];
+    for (const s of sentences) {
+      if (s.length <= 2200) {
+        result.push(s);
+      } else {
+        let remaining = s;
+        while (remaining) {
+          let end = Math.min(2200, remaining.length);
+          if (end < remaining.length) {
+            const space = remaining.lastIndexOf(' ', end);
+            if (space > 1000) end = space;
+          }
+          result.push(remaining.slice(0, end));
+          remaining = remaining.slice(end).trimStart();
+        }
+      }
+    }
+    return result.length ? result : [raw];
+  },
+
+  async playAudioClip(audioUrl) {
+    if (!audioUrl || this.generation !== this.generation) return;
+    this.objectUrl = audioUrl;
+    this.audio = new Audio(audioUrl);
+    voiceNote.textContent = `Speaking with ${narrator.value === 'indian-female' ? 'Ishita' : 'Ratan'} · Indian English.`;
+    await new Promise((resolve, reject) => {
+      this.clipResolve = resolve;
+      this.audio.onended = resolve;
+      this.audio.onerror = () => reject(new Error('Audio playback failed.'));
+      this.audio.play().catch(reject);
+    });
+    this.clipResolve = null;
+    this.audio = null;
+    if (this.objectUrl === audioUrl) this.objectUrl = null;
   },
 
   async speakIndian(text) {
     const generation = this.generation;
     if (!cloudConsent.checked || !indianVoiceConfigured) {
-      voiceNote.textContent = indianVoiceConfigured ? 'Allow cloud speech above to use this Indian voice.' : 'Indian neural voices need server setup. Choose a device voice for now.';
+      voiceNote.textContent = indianVoiceConfigured
+        ? 'Allow cloud speech above to use this Indian voice.'
+        : 'Indian neural voices need server setup. Choose a device voice for now.';
       this.queue = [];
       return;
     }
-    const request = new AbortController(); this.speechRequest = request;
-    try {
-      // Preserve every character; split long paragraphs at whitespace, not mid-word.
-      let remaining = String(text || '').trim();
-      while (remaining && generation === this.generation) {
-        let end = Math.min(2200, remaining.length);
-        if (end < remaining.length) { const space = remaining.lastIndexOf(' ', end); if (space > 1000) end = space; }
-        const segment = remaining.slice(0, end); remaining = remaining.slice(end).trimStart();
-        voiceNote.textContent = 'Preparing Indian-English audio…';
+
+    const segments = this.segmentTextIntoSentences(text);
+    while (this.queue.length > 0 && !this.queue[0].fileName) {
+      const nextItem = this.queue.shift();
+      if (nextItem?.text) {
+        segments.push(...this.segmentTextIntoSentences(nextItem.text));
+      }
+    }
+    if (!segments.length) return;
+
+    const fetchSegmentAudio = async (segmentText, index) => {
+      if (generation !== this.generation) return null;
+      const controller = new AbortController();
+      this.activeControllers.add(controller);
+      this.speechRequest = controller;
+
+      try {
         const response = await fetch('/advocatevox/api/speech', {
-          method: 'POST', signal: request.signal, headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: segment, voice: narrator.value, rate: normaliseSpeechRate(speechRate.value), cloudConsent: true }),
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: segmentText,
+            voice: narrator.value,
+            rate: normaliseSpeechRate(speechRate.value),
+            cloudConsent: true,
+          }),
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Indian voice is unavailable.');
-        if (generation !== this.generation) return;
+        if (!response.ok || (!result.ok && !result.audio)) {
+          throw new Error(result.error || 'Indian voice is unavailable.');
+        }
+        if (generation !== this.generation) return null;
         const bytes = Uint8Array.from(atob(result.audio), (c) => c.charCodeAt(0));
-        this.objectUrl = URL.createObjectURL(new Blob([bytes], { type: result.mime }));
-        this.audio = new Audio(this.objectUrl);
-        // Pace is synthesized by the provider; do not time-stretch the audio twice.
-        voiceNote.textContent = `Speaking with ${narrator.value === 'indian-female' ? 'Ishita' : 'Ratan'} · Indian English.`;
-        await new Promise((resolve, reject) => {
-          this.clipResolve = resolve;
-          this.audio.onended = resolve; this.audio.onerror = () => reject(new Error('Audio playback failed.'));
-          this.audio.play().catch(reject);
-        });
-        if (generation !== this.generation) return;
-        URL.revokeObjectURL(this.objectUrl); this.objectUrl = null; this.audio = null; this.clipResolve = null;
+        const mime = result.mime || result.mimeType || 'audio/mpeg';
+        const blob = new Blob([bytes], { type: mime });
+        const audioUrl = this.createTrackedUrl(blob);
+        return { audioUrl, text: segmentText, index };
+      } finally {
+        this.activeControllers.delete(controller);
+        if (this.speechRequest === controller) this.speechRequest = null;
+      }
+    };
+
+    try {
+      // Prefetch first segment immediately
+      this.prefetchQueue.set(0, fetchSegmentAudio(segments[0], 0));
+
+      for (let i = 0; i < segments.length; i++) {
+        if (generation !== this.generation) break;
+
+        // Speculatively prefetch NEXT segment while CURRENT segment is preparing / playing
+        if (i + 1 < segments.length && !this.prefetchQueue.has(i + 1)) {
+          this.prefetchQueue.set(i + 1, fetchSegmentAudio(segments[i + 1], i + 1));
+        }
+
+        voiceNote.textContent = 'Preparing Indian-English audio…';
+        const fetchedPromise = this.prefetchQueue.get(i);
+        const fetched = await fetchedPromise;
+        this.prefetchQueue.delete(i);
+
+        if (generation !== this.generation) {
+          if (fetched?.audioUrl) this.revokeTrackedUrl(fetched.audioUrl);
+          break;
+        }
+
+        if (!fetched || !fetched.audioUrl) {
+          throw new Error('Indian voice audio could not be prepared.');
+        }
+
+        const { audioUrl } = fetched;
+
+        // Playback segment - while playing, segment i + 1 is being fetched asynchronously
+        await this.playAudioClip(audioUrl);
+        this.revokeTrackedUrl(audioUrl);
+
+        if (generation !== this.generation) break;
       }
     } catch (error) {
       if (generation === this.generation) {
-        this.reset(); voiceNote.textContent = error.message || 'Indian voice unavailable. Choose a device voice.';
+        this.reset();
+        voiceNote.textContent = error.message || 'Indian voice unavailable. Choose a device voice.';
         stopButton.hidden = !streaming;
       }
-    } finally { if (this.speechRequest === request) this.speechRequest = null; }
+    } finally {
+      for (const [idx, promise] of this.prefetchQueue.entries()) {
+        this.prefetchQueue.delete(idx);
+        promise.then((res) => {
+          if (res?.audioUrl) this.revokeTrackedUrl(res.audioUrl);
+        }).catch(() => {});
+      }
+    }
   },
 
   speak(text) {
@@ -674,7 +809,7 @@ question.addEventListener('keydown', (event) => {
 stopButton.addEventListener('click', () => {
   runId += 1;
   controller?.abort();
-  voice.reset();
+  voice.stop();
   setBusy(false);
   stopButton.hidden = true;
   setStatus('Stopped.');
